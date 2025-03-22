@@ -346,13 +346,13 @@ void SH2DynWriteNotify(u32 start, u32 length){
   switch (start & 0x0FF00000){
     // ROM
   case 0x00000000:
-      block->LookupTableRom[ (start&0x000FFFFF)>>1 ] = NULL;
+      block->LookupTableRom[ (start&LUTMASK_ROM)>>1 ] = NULL;
     break;
 
   // Low Memory
   case 0x00200000:
     for (u32 addr = start; addr< start + length; addr += 2)
-      block->LookupTableLow[ (addr&0x000FFFFF)>>1 ] = NULL;
+      block->LookupTableLow[ (addr&LUTMASK_LOW)>>1 ] = NULL;
     break;
     // High Memory
   case 0x06000000:
@@ -360,14 +360,14 @@ void SH2DynWriteNotify(u32 start, u32 length){
 #if defined(SET_DIRTY)
     block->setDirty(addr);
 #else
-    block->LookupTable[ (addr&0x000FFFFF)>>1 ] = NULL;
+    block->LookupTable[ (addr&LUTMASK)>>1 ] = NULL;
 #endif
     break;
 
     // Cache
   default:
     if ((start & 0xFF000000) == 0xC0000000){
-      block->LookupTableC[ (start&0x000FFFFF)>>1 ] = NULL;
+      block->LookupTableC[ (start&LUTMASK_C)>>1 ] = NULL;
     }
     break;
   }
@@ -405,7 +405,7 @@ void memSetByte(u32 addr , u8 data )
   {
   // Low Memory
   case 0x00200000:
-    block->LookupTableLow[  (addr&0x000FFFFF)>>1 ] = NULL;
+    block->LookupTableLow[  (addr&LUTMASK_LOW)>>1 ] = NULL;
     T2WriteByte(LowWram, addr & 0xFFFFF, data);
     if (addr & 0x20000000) DynarecSh2::CurrentContext->memcycle_ += 7;
     dynaFree();
@@ -416,7 +416,7 @@ void memSetByte(u32 addr , u8 data )
 #if defined(SET_DIRTY)
     block->setDirty(addr);
 #else
-    block->LookupTable[ (addr&0x000FFFFF)>>1 ] = NULL;
+    block->LookupTable[ (addr&LUTMASK)>>1 ] = NULL;
 #endif
     T2WriteByte(HighWram, addr & 0xFFFFF, data);
     if (addr & 0x20000000) DynarecSh2::CurrentContext->memcycle_ += 2;
@@ -428,7 +428,7 @@ void memSetByte(u32 addr , u8 data )
   default:
     if ((addr & 0xFF000000) == 0xC0000000)
     {
-      block->LookupTableC[ (addr&0x000FFFFF)>>1] = NULL;
+      block->LookupTableC[ (addr&LUTMASK_C)>>1] = NULL;
     }
   }
   MappedMemoryWriteByte(addr, data, &cycle);
@@ -447,7 +447,7 @@ void memSetWord(u32 addr, u16 data )
   {
   // Low Memory
    case 0x00200000:
-    block->LookupTableLow[ (addr&0x000FFFFF)>>1 ] = NULL;
+    block->LookupTableLow[ (addr&LUTMASK_LOW)>>1 ] = NULL;
     T2WriteWord(LowWram, addr & 0xFFFFF, data);
     if (addr & 0x20000000) DynarecSh2::CurrentContext->memcycle_ += 7;
     dynaFree();
@@ -458,7 +458,7 @@ void memSetWord(u32 addr, u16 data )
 #if defined(SET_DIRTY)
      block->setDirty(addr);
 #else
-     block->LookupTable[(addr & 0x000FFFFF) >> 1] = NULL;
+     block->LookupTable[(addr & LUTMASK) >> 1] = NULL;
 #endif
     T2WriteWord(HighWram, addr & 0xFFFFF, data);
     if (addr & 0x20000000) DynarecSh2::CurrentContext->memcycle_ += 2;
@@ -470,7 +470,7 @@ void memSetWord(u32 addr, u16 data )
   default:
     if ((addr & 0xFF000000) == 0xC0000000)
     {
-      block->LookupTableC[ (addr&0x000FFFFF) >> 1] = NULL;
+      block->LookupTableC[ (addr&LUTMASK_C) >> 1] = NULL;
     }
   }
   MappedMemoryWriteWord(addr, data, &cycle);
@@ -489,8 +489,8 @@ void memSetLong(u32 addr , u32 data )
   {  
     // Low Memory
   case 0x00200000:
-    block->LookupTableLow[ (addr & 0x000FFFFF)>>1  ] = NULL;
-    block->LookupTableLow[ ((addr & 0x000FFFFF)>>1) + 1 ] = NULL;
+    block->LookupTableLow[ (addr & LUTMASK_LOW)>>1  ] = NULL;
+    block->LookupTableLow[ ((addr & LUTMASK_LOW)>>1) + 1 ] = NULL;
     T2WriteLong(LowWram, addr & 0xFFFFF, data);
     if(addr&0x20000000) DynarecSh2::CurrentContext->memcycle_ += 7;
     dynaFree();
@@ -502,8 +502,8 @@ void memSetLong(u32 addr , u32 data )
     block->setDirty(addr);
     block->setDirty(addr+2);
 #else
-    block->LookupTable[(addr & 0x000FFFFF) >> 1] = NULL;
-    block->LookupTable[((addr & 0x000FFFFF) >> 1) + 1] = NULL;
+    block->LookupTable[(addr & LUTMASK) >> 1] = NULL;
+    block->LookupTable[((addr & LUTMASK) >> 1) + 1] = NULL;
 #endif
     T2WriteLong(HighWram, addr & 0xFFFFF, data);
     if (addr & 0x20000000) DynarecSh2::CurrentContext->memcycle_ += 2;
@@ -515,7 +515,7 @@ void memSetLong(u32 addr , u32 data )
   default:
     if ((addr & 0xFF000000) == 0xC0000000)
     {
-      block->LookupTableC[ (addr&0x000FFFFF)>>1 ] = NULL;
+      block->LookupTableC[ (addr&LUTMASK_C)>>1 ] = NULL;
     }
   }
   MappedMemoryWriteLong(addr, data, &cycle);

@@ -779,7 +779,7 @@ Block * CompileBlocks::CompileBlock(u32 pc, addrs * ParentT = NULL)
   if (g_CompleBlock[blockCount].b_addr != 0x00) {
     
     if ((g_CompleBlock[blockCount].b_addr & 0xFF000000) == 0xC0000000) {
-      LookupTableC[(g_CompleBlock[blockCount].b_addr & 0x000FFFFF) >> 1] = NULL;
+      LookupTableC[(g_CompleBlock[blockCount].b_addr & LUTMASK_C) >> 1] = NULL;
     }
     else {
       switch (g_CompleBlock[blockCount].b_addr & 0x0FF00000) {
@@ -788,15 +788,15 @@ Block * CompileBlocks::CompileBlock(u32 pc, addrs * ParentT = NULL)
           //return NULL; do nothing
         }
         else {
-          LookupTableRom[(g_CompleBlock[blockCount].b_addr & 0x000FFFFF) >> 1] = NULL;
+          LookupTableRom[(g_CompleBlock[blockCount].b_addr & LUTMASK_ROM) >> 1] = NULL;
         }
         break;
       case 0x00200000:
-        LookupTableLow[(g_CompleBlock[blockCount].b_addr & 0x000FFFFF) >> 1] = NULL;
+        LookupTableLow[(g_CompleBlock[blockCount].b_addr & LUTMASK_LOW) >> 1] = NULL;
         break;
       case 0x06000000:
         /*case 0x06100000:*/
-        LookupTable[(g_CompleBlock[blockCount].b_addr & 0x000FFFFF) >> 1] = NULL;
+        LookupTable[(g_CompleBlock[blockCount].b_addr & LUTMASK) >> 1] = NULL;
         //LOG("%d, %08X is removed due to overflow", blockCount, g_CompleBlock[blockCount].b_addr);
         break;
       default:
@@ -1205,12 +1205,12 @@ int CompileBlocks::EmmitCode(Block *page, addrs * ParentT )
 
         Block * tmp = NULL; 
         if ( (jumppc&0x0FF00000) == 0x06000000 && (start_addr & 0x0FF00000) == 0x06000000) {
-          tmp = LookupTable[(jumppc & 0x000FFFFF) >> 1];
+          tmp = LookupTable[(jumppc & LUTMASK) >> 1];
         }else if ((jumppc & 0x0FF00000) == 0x00200000 && (start_addr & 0x0FF00000) == 0x00200000) {
-          tmp = LookupTableLow[(jumppc & 0x000FFFFF) >> 1];
+          tmp = LookupTableLow[(jumppc & LUTMASK_LOW) >> 1];
         }
         else if ((jumppc & 0x0FF00000) == 0x00000000 && (start_addr & 0x0FF00000) == 0x00000000) {
-          tmp = LookupTableRom[(jumppc & 0x000FFFFF) >> 1];
+          tmp = LookupTableRom[(jumppc & LUTMASK_ROM) >> 1];
         }
         if (tmp != NULL && (tmp->flags&BLOCK_WRITE) == 0 && (tmp->e_addr+2) == page->b_addr ) {
           page->flags |= BLOCK_LOOP;
@@ -1406,11 +1406,11 @@ inline int DynarecSh2::Execute(){
 
   if ((GET_PC() & 0xFF000000) == 0xC0000000)
   {
-    pBlock = m_pCompiler->LookupTableC[(GET_PC() & 0x000FFFFF) >> 1];
+    pBlock = m_pCompiler->LookupTableC[(GET_PC() & LUTMASK_C) >> 1];
     if (pBlock == NULL)
     {
       pBlock = m_pCompiler->CompileBlock(GET_PC());
-      m_pCompiler->LookupTableC[(GET_PC() & 0x000FFFFF) >> 1] = pBlock;
+      m_pCompiler->LookupTableC[(GET_PC() & LUTMASK_C) >> 1] = pBlock;
       if (pBlock == NULL) {
         Undecoded();
         return IN_INFINITY_LOOP;
@@ -1445,7 +1445,7 @@ inline int DynarecSh2::Execute(){
          memcycle_ += ctx_->cycles;
         return 0;
       }
-      pBlock = m_pCompiler->LookupTableRom[(GET_PC() & 0x000FFFFF) >> 1];
+      pBlock = m_pCompiler->LookupTableRom[(GET_PC() & LUTMASK_ROM) >> 1];
       if (pBlock == NULL)
       {
         pBlock = m_pCompiler->CompileBlock(GET_PC());
@@ -1453,13 +1453,13 @@ inline int DynarecSh2::Execute(){
           Undecoded();
           return IN_INFINITY_LOOP;
         }
-        m_pCompiler->LookupTableRom[(GET_PC() & 0x000FFFFF) >> 1] = pBlock;
+        m_pCompiler->LookupTableRom[(GET_PC() & LUTMASK_ROM) >> 1] = pBlock;
       }
       break;
 
       // Low Memory
     case 0x00200000:
-      pBlock = m_pCompiler->LookupTableLow[(GET_PC() & 0x000FFFFF) >> 1];
+      pBlock = m_pCompiler->LookupTableLow[(GET_PC() & LUTMASK_LOW) >> 1];
       if (pBlock == NULL)
       {
         pBlock = m_pCompiler->CompileBlock(GET_PC());
@@ -1467,7 +1467,7 @@ inline int DynarecSh2::Execute(){
           Undecoded();
           return IN_INFINITY_LOOP;
         }
-        m_pCompiler->LookupTableLow[(GET_PC() & 0x000FFFFF) >> 1] = pBlock;
+        m_pCompiler->LookupTableLow[(GET_PC() & LUTMASK_LOW) >> 1] = pBlock;
       }
       break;
 
@@ -1475,7 +1475,7 @@ inline int DynarecSh2::Execute(){
     case 0x06000000:
       /*case 0x06100000:*/
 
-      pBlock = m_pCompiler->LookupTable[(GET_PC() & 0x000FFFFF) >> 1];
+      pBlock = m_pCompiler->LookupTable[(GET_PC() & LUTMASK) >> 1];
       if (pBlock == NULL)
       {
         pBlock = m_pCompiler->CompileBlock(GET_PC(), m_pCompiler->LookupParentTable);
@@ -1483,7 +1483,7 @@ inline int DynarecSh2::Execute(){
           Undecoded();
           return IN_INFINITY_LOOP;
         }
-        m_pCompiler->LookupTable[(GET_PC() & 0x000FFFFF) >> 1] = pBlock;
+        m_pCompiler->LookupTable[(GET_PC() & LUTMASK) >> 1] = pBlock;
       }
       break;
 

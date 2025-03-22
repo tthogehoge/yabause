@@ -184,6 +184,16 @@ struct x86op_desc
 
 };
 
+#define LUTSIZE     0x100000
+#define LUTSIZE_ROM 0x80000
+#define LUTSIZE_LOW 0x100000
+#define LUTSIZE_C   0x8000
+
+#define LUTMASK     (LUTSIZE-1)
+#define LUTMASK_ROM (LUTSIZE_ROM-1)
+#define LUTMASK_LOW (LUTSIZE_LOW-1)
+#define LUTMASK_C   (LUTSIZE_C-1)
+
 #define SET_DIRTY
 extern "C" {
   void DebugLog(const char * format, ...);
@@ -196,7 +206,7 @@ private:
     BuildInstructionList();
     Init();
 #ifdef SET_DIRTY
-    LookupParentTable = new addrs[0x100000 >> 1];
+    LookupParentTable = new addrs[LUTSIZE >> 1];
 #else
     LookupParentTable = NULL;
 #endif
@@ -224,12 +234,12 @@ public:
   Block * g_CompleBlock;
   
   u8 dsh2_instructions[MAX_INSTSIZE];
-  Block* LookupTable[0x100000>>1];    
-  //addrs LookupParentTable[0x100000>>1];
+  Block* LookupTable[LUTSIZE>>1];    
+  //addrs LookupParentTable[LUTSIZE>>1];
   addrs * LookupParentTable;
-  Block* LookupTableRom[0x80000>>1];
-  Block* LookupTableLow[0x100000>>1];
-  Block* LookupTableC[0x8000>>1];
+  Block* LookupTableRom[LUTSIZE_ROM>>1];
+  Block* LookupTableLow[LUTSIZE_LOW>>1];
+  Block* LookupTableC[LUTSIZE_C>>1];
   Block * dCode;
   
   std::unordered_map<u32, int> self_modify_block;
