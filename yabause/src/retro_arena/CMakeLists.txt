@@ -22,7 +22,7 @@ add_subdirectory(pugixml)
 add_subdirectory(nanogui-sdl)
 
 #include( ../glfw/external_zlib.cmake )
-include( ${CMAKE_SOURCE_DIR}/CMake/Packages/external_libpng.cmake )
+#include( ${CMAKE_SOURCE_DIR}/CMake/Packages/external_libpng.cmake )
 
 #------------------------------------------------------------------------------
 # nlohmann/json
@@ -65,7 +65,6 @@ target_link_libraries( yabause-retro-arena ${zlib_STATIC_LIBRARIES} )
 add_dependencies(yabause-retro-arena Json png zlib libchd )
 yab_port_success(yabause-retro-arena)
 set_target_properties(yabause-retro-arena PROPERTIES OUTPUT_NAME yabasanshiro)
-
 
 install(TARGETS yabause-retro-arena DESTINATION ".")
 install(FILES "README.md" DESTINATION "." )

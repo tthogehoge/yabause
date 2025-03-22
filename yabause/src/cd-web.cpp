@@ -29,6 +29,7 @@ extern "C"
   static int WebCDReadSectorFAD(u32, void *);
   static void WebCDReadAheadFAD(u32);
   static void WebCDSetStatus(int status);
+int YabNanosleep(u64 ns);
 
   CDInterface WebApiCD = {
       CDCORE_WEBAPI,

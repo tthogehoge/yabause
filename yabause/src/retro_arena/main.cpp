@@ -263,9 +263,9 @@ int yabauseinit()
   yinit.rbg_use_compute_shader = pre.getBool( "Use compute shader" , false);
 #endif
 
-  yinit.use_cpu_affinity = 1;
+  //yinit.use_cpu_affinity = 1;
 
-  yinit.use_sh2_cache = 0;
+  //yinit.use_sh2_cache = 0;
 
   res = YabauseInit(&yinit);
   if( res == -1) {
@@ -290,14 +290,14 @@ int main(int argc, char** argv)
 
   // Inisialize home directory
   std::string home_dir = getenv("HOME");
-  home_dir += "/.yabasanshiro/";
+  home_dir = "/storage/.config/yabasanshiro/";
   struct stat st = {0};
   if (stat(home_dir.c_str(), &st) == -1) {
     mkdir(home_dir.c_str(), 0700);
   }  
-  std::string bckup_dir = home_dir + "backup.bin";
+  std::string bckup_dir = "/storage/roms/saturn/yabasanshiro/backup.bin";
   strcpy( buppath, bckup_dir.c_str() );
-  strcpy( s_savepath, home_dir.c_str() );
+  strcpy( s_savepath, "/storage/roms/savestates/saturn/yabasanshiro/" );
   g_keymap_filename = home_dir + "keymapv2.json";
 
   std::string current_exec_name = argv[0]; // Name of the current exec program
@@ -389,8 +389,8 @@ int main(int argc, char** argv)
 	//SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
 
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,  SDL_GL_CONTEXT_PROFILE_ES);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
 
 		SDL_GL_SetAttribute(SDL_GL_RED_SIZE,           8);
 		SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,         8);
@@ -556,11 +556,15 @@ int main(int argc, char** argv)
       }
 
       else if(e.type == evToggleFps ){
+	      /*
         if( g_EnagleFPS == 0 ){
           g_EnagleFPS = 1;
         }else{
           g_EnagleFPS = 0;
         }
+	*/
+	      extern void ToggleNBG2();
+	      ToggleNBG2();
         hideMenuScreen();         
       }
 
@@ -601,7 +605,7 @@ int main(int argc, char** argv)
         if( ret == 0 ){
           char pngname[256];
           snprintf(pngname,256,"%s/%s_%d.png", s_savepath, cdip->itemnum, e.user.code);
-          fs::copy(tmpfilename, pngname, fs::copy_options::overwrite_existing );
+          system((std::string("cp -f ") + tmpfilename + " " + pngname).c_str());
         }
         hideMenuScreen();
       }

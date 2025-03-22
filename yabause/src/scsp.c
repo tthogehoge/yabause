@@ -490,7 +490,7 @@ void fill_alfo_tables()
 void op1(struct Slot * slot)
 {
    u32 oct = slot->regs.oct ^ 8;
-   u32 fns = 0x400 ^ slot->regs.fns;
+   u32 fns = slot->regs.fns ^ 0x400;
    u32 phase_increment = fns << oct;
    int plfo_val = 0;
    int plfo_shifted = 0;
@@ -1105,10 +1105,10 @@ void scsp_slot_write_byte(struct Scsp *s, u32 addr, u8 data)
       slot->regs.unknown3 = (data >> 7) & 1;
       slot->regs.oct = (data >> 3) & 0xf;
       slot->regs.unknown4 = (data >> 2) & 1;
-      slot->regs.fns = (slot->regs.fns & 0xff) | ((data & 0x7) << 8);
+      slot->regs.fns = (slot->regs.fns & 0xff) | ((data & 3) << 8);
       break;
    case 17:
-      slot->regs.fns = (slot->regs.fns & 0x700) | data;
+      slot->regs.fns = (slot->regs.fns & 0x300) | data;
       break;
    case 18:
       slot->regs.re = (data >> 7) & 1;
@@ -1317,7 +1317,7 @@ void scsp_slot_write_word(struct Scsp *s, u32 addr, u16 data)
       slot->regs.unknown3 = (data >> 15) & 1;
       slot->regs.unknown4 = (data >> 10) & 1;
       slot->regs.oct = (data >> 11) & 0xf;
-      slot->regs.fns = data & 0x7ff;
+      slot->regs.fns = data & 0x3ff;
       break;
    case 9:
       slot->regs.re = (data >> 15) & 1;
@@ -4995,7 +4995,34 @@ SoundRamReadLong (u32 addr)
   SyncSh2And68k();
 
   val = T2ReadLong(SoundRam, addr);
+  //LOG("SoundRamReadLong %08X:%08X time=%d PC=%08X R7=%08X", addr, val, MSH2->cycles, MSH2->regs.PC, MSH2->regs.R[7]);
+#if 0 // This is the workround
+  if (addr == 0x500) {
 
+    if (val == 0xFFFFFFFF ) {
+      char * code = Cs2GetCurrentGmaecode();
+      if (strcmp(code, "T-1229G") == 0 || strcmp(code, "T-1228G") == 0 ) {
+        u64 before = YabauseGetTicks() * 1000000 / yabsys.tickfreq;
+        while (val == 0xFFFFFFFF) {
+          YabThreadUSleep(16666);
+          SyncSh2And68k();
+          val = T2ReadLong(SoundRam, addr);
+          LOG("read Addr val=%04X, %08X(%d)\n", val, YabauseGetFrameCount(), yabsys.LineCount);
+        }
+        while (val == 0x0) {
+          YabThreadUSleep(16666);
+          SyncSh2And68k();
+          val = T2ReadLong(SoundRam, addr);
+          LOG("read Addr val=%04X, %08X(%d)\n", val, YabauseGetFrameCount(), yabsys.LineCount);
+        }
+
+        u32 checktime = YabauseGetTicks() * 1000000 / yabsys.tickfreq;
+        LOG("Sync wait time =%d\n", (s32)(checktime - before));
+      }
+    }
+
+  }
+#endif
 
   return val;
 
@@ -5468,15 +5495,15 @@ void ScspExec(){
 
 void ScspAsynMainCpuTime( void * p ){
 
-  s64 before;
-  s64 now;
-  s64 difftime;
+  u64 before;
+  u64 now;
+  u64 difftime;
   const int samplecnt = 256; // 11289600/44100
   const int step = 16;
   int frame = 0;
   int frame_count = 0;
   int i;
-  int frame_div = g_scsp_sync_count_per_frame;
+  int frame_div = 1; // g_scsp_sync_count_per_frame;
   int framecnt = 188160 / frame_div; // 11289600/60
   int hzcheck = 0;
 
@@ -5484,10 +5511,8 @@ void ScspAsynMainCpuTime( void * p ){
   struct timespec tm;
   setpriority( PRIO_PROCESS, 0, -20);
 #endif
-  if( yabsys.use_cpu_affinity ){
-    YabThreadSetCurrentThreadAffinityMask( YabThreadGetFastestCpuIndex() );
-  }
-  before = YabauseGetTicks();
+  YabThreadSetCurrentThreadAffinityMask( 0x03 );
+  before = YabauseGetTicks() * 1000000000 / yabsys.tickfreq;
   u32 wait_clock = 0;
   u64 pre_m68k_cycle = 0;
   u64 m68k_inc = 0;
@@ -5536,7 +5561,7 @@ void ScspAsynMainCpuTime( void * p ){
         m68k_inc = 0;
         //LOG("[SCSP] WAIT SH2");
         YabWaitEventQueue(q_scsp_frame_start);
-        now = YabauseGetTicks();
+        now = YabauseGetTicks() * 1000000000 / yabsys.tickfreq;
         //LOG(" SCSPTIME = %d/16666666 %d/735", (s32)(now - before), hzcheck);
         hzcheck = 0;
         before = now;
@@ -5551,26 +5576,26 @@ void ScspAsynMainCpuTime( void * p ){
 
 void ScspAsynMainRealtime(void * p) {
 
-  s64 before;
-  s64 now;
-  s64 difftime;
+  u64 before;
+  u64 now;
+  u64 difftime;
   const int samplecnt = 256; // 11289600/44100
   const int step = 16;
   int frame = 0; 
   int frame_count = 0;
   int i;
-  int frame_div = g_scsp_sync_count_per_frame;
+  int frame_div = 1; //g_scsp_sync_count_per_frame;
   int framecnt = 188160 / frame_div; // 11289600/60
   int hzcheck = 0;
 
 #if defined(ARCH_IS_LINUX)
   struct timespec tm;
   struct sched_param thread_param;
-  //thread_param.sched_priority = 15; //sched_get_priority_max(SCHED_FIFO);
-  //if ( pthread_setschedparam(pthread_self(), SCHED_FIFO, &thread_param) < -1 ) {
-  //  LOG("sched_setscheduler");
-  //}
-  //setpriority( PRIO_PROCESS, 0, -10);
+  thread_param.sched_priority = 15; //sched_get_priority_max(SCHED_FIFO);
+  if ( pthread_setschedparam(pthread_self(), SCHED_FIFO, &thread_param) < -1 ) {
+    LOG("sched_setscheduler");
+  }
+  setpriority( PRIO_PROCESS, 0, -10);
 #endif
 
   // Special for Thunder Force V
@@ -5583,11 +5608,8 @@ void ScspAsynMainRealtime(void * p) {
 
   const u32 base_clock = (u32)((644.8412698 / ((double)samplecnt / (double)step)) * (1 << CLOCK_SYNC_SHIFT));
 
-  if( yabsys.use_cpu_affinity ){
-    YabThreadSetCurrentThreadAffinityMask(YabThreadGetFastestCpuIndex());
-  }
-  
-  before = YabauseGetTicks();
+  YabThreadSetCurrentThreadAffinityMask(0x03);
+  before = YabauseGetTicks() * 1000000000 / yabsys.tickfreq;
   u32 wait_clock = 0;
 
   now = 0;
@@ -5622,19 +5644,19 @@ void ScspAsynMainRealtime(void * p) {
       }
       s64 sleeptime = 0;
       s64 initsleeptime = 0;
-      s64 initnow = 0;
-      s64 initbefore = 0;
-      s64 checktime = 0;
-      s64 sleepchecktime = 0;
+      u64 initnow = 0;
+      u64 initbefore = 0;
+      u64 checktime = 0;
+      u64 sleepchecktime = 0;
       m68kcycle = 0;
       sh2_read_req = 0;
       do {
-        now = YabauseGetTicks();
+        now = YabauseGetTicks() * 1000000000L / yabsys.tickfreq;
         if (now >= before){
-          difftime = (now - before) * 1000000000L / yabsys.tickfreq;
+          difftime = now - before;
         }
         else {
-          difftime = (now + (LLONG_MAX - before)) * 1000000000L / yabsys.tickfreq;
+          difftime = now + (ULLONG_MAX - before);
         }
         sleeptime = ((16666666L / frame_div) - difftime);
         if(initsleeptime==0){
@@ -5672,14 +5694,14 @@ void ScspAsynMainRealtime(void * p) {
         }
         pthread_mutex_unlock(&sync_mutex);
 #elif defined(ARCH_IS_LINUX)    
-        time(&tm);    
+        time((time_t *)&tm);
         long n = tm.tv_nsec;
         tm.tv_nsec += sleeptime;
         if( n > tm.tv_nsec){
           tm.tv_sec += 1;
         }
         pthread_mutex_lock(&sync_mutex);
-        int rtn = pthread_cond_timedwait(&sync_cnd,&sync_mutex,ctime(&tm));
+        int rtn = pthread_cond_timedwait(&sync_cnd,&sync_mutex,(const struct timespec * restrict)ctime((time_t *)&tm));
         if(rtn == 0){
           for (i = 0; i < samplecnt; i += step) {
             MM68KExec(step);
@@ -5713,7 +5735,7 @@ void ScspAsynMainRealtime(void * p) {
 #endif
       } while (sleeptime > 0);
 
-      checktime = YabauseGetTicks();
+      checktime = YabauseGetTicks() * 1000000000 / yabsys.tickfreq;
       //printf("vsynctime = %d(%d) %d(%d)\n", (s32)(checktime - before),16666666/frame_div,(s32)(checktime - initnow),(s32)initsleeptime);
       //printf("vsynctime = %d(%d) %"PRIu64"-%"PRIu64"=(%"PRId64")\n", (s32)(checktime - before),16666666/frame_div,now,before,initsleeptime);
       before = checktime;
@@ -5727,10 +5749,10 @@ void ScspExec(){
   if (thread_running == 0){
     thread_running = 1;
     if (g_scsp_main_mode == 0) {
-      YabThreadStart(YAB_THREAD_SCSP, "scsp sync", ScspAsynMainCpuTime, NULL);
+      YabThreadStart(YAB_THREAD_SCSP, (void * (*)(void *))ScspAsynMainCpuTime, NULL);
     }
     else {
-      YabThreadStart(YAB_THREAD_SCSP, "scsp async", ScspAsynMainRealtime, NULL);
+      YabThreadStart(YAB_THREAD_SCSP, (void * (*)(void *))ScspAsynMainRealtime, NULL);
     }
     YabThreadUSleep(100000);
   }
@@ -6021,7 +6043,7 @@ SoundSaveState (FILE *fp)
   u8 nextphase;
   IOCheck_struct check = { 0, 0 };
 
-  offset = StateWriteHeader (fp, "SCSP", 4);
+  offset = StateWriteHeader (fp, "SCSP", 3);
 
   // Save 68k registers first
   ywrite (&check, (void *)&IsM68KRunning, 1, 1, fp);
@@ -6224,7 +6246,6 @@ SoundSaveState (FILE *fp)
 
   // Write main internal variables
   ywrite (&check, (void *)&scsp.mem4b, 4, 1, fp);
-  //ywrite (&check, (void *)&scsp.dac18b, 4, 1, fp);
   ywrite (&check, (void *)&scsp.mvol, 4, 1, fp);
 
   ywrite (&check, (void *)&scsp.rbl, 4, 1, fp);
@@ -6259,7 +6280,6 @@ SoundSaveState (FILE *fp)
   ywrite (&check, (void *)&scsp.mcipd, 4, 1, fp);
 
   ywrite (&check, (void *)scsp.stack, 4, 32 * 2, fp);
-
 
   ywrite(&check, (void *)scsp_dsp.coef, sizeof(u16), 64, fp);
   ywrite(&check, (void *)scsp_dsp.madrs, sizeof(u16), 32, fp);
@@ -6568,9 +6588,6 @@ SoundLoadState (FILE *fp, int version, int size)
 
       // Read main internal variables
       yread (&check, (void *)&scsp.mem4b, 4, 1, fp);
-      if( version >= 4){
-        //yread (&check, (void *)&scsp.dac18b, 4, 1, fp);
-      }
       yread (&check, (void *)&scsp.mvol, 4, 1, fp);
 
       yread (&check, (void *)&scsp.rbl, 4, 1, fp);

@@ -1,4 +1,4 @@
-/*
+﻿/*
         Copyright 2019 devMiyax(smiyaxdev@gmail.com)
 
 This file is part of YabaSanshiro.
@@ -18,43 +18,32 @@ along with YabaSanshiro; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
-extern "C" {
+extern "C"{
 #include "ygl.h"
 #include "yui.h"
 #include "vidshared.h"
 
-  extern vdp2rotationparameter_struct  paraA;
-  extern vdp2rotationparameter_struct  paraB;
-  extern Vdp2 * fixVdp2Regs;
+extern vdp2rotationparameter_struct  paraA;
+extern vdp2rotationparameter_struct  paraB;
+extern Vdp2 * fixVdp2Regs;
 }
-
-#include <math.h>
-
-#if defined(HAVE_VULKAN)
-#include "vulkan/VIDVulkan.h"
-#include "vulkan/VulkanTools.h"
-#include "vulkan/vulkan.hpp"
-#endif
-
 
 #define YGLDEBUG LOG
 
-// debug Color
-//imageStore(outSurface,texel,vec4( float(32u&0xFFu)/255.0, float((32u>>8) &0xFFu)/255.0, float((32u>>16) &0xFFu)/255.0, 1.0)); return;
-
-const char prg_generate_rbg_base[] =
-#if defined(_OGLES3_)
+const char prg_generate_rbg[] =
+//#if defined(_OGLES3_)
 "#version 310 es \n"
 "precision highp float; \n"
 "precision highp int;\n"
 "precision highp image2D;\n"
-#else
-"#version 430 \n"
-#endif
-"layout(local_size_x = %d, local_size_y = %d, local_size_z = 1) in;\n"
-"layout(rgba8, binding = 0)  uniform writeonly image2D outSurface;\n"
+//#else
+//"#version 430 \n"
+//#endif
+"#pragma optionNV(inline all)\n"
+"layout(local_size_x = 4, local_size_y = 4) in;\n"
+"layout(rgba8, binding = 0) writeonly highp uniform image2D outSurface;\n"
 "layout(std430, binding = 1) readonly buffer VDP2 { uint vram[]; };\n"
-"struct vdp2rotationparameter_struct{ \n"
+" struct vdp2rotationparameter_struct{ \n"
 " uint PlaneAddrv[16];\n"
 " float Xst;\n"
 " float Yst;\n"
@@ -236,6 +225,7 @@ const char prg_generate_rbg_base[] =
 "  return 0; \n"
 "} \n"
 
+
 //----------------------------------------------------------------------
 // Main
 //----------------------------------------------------------------------
@@ -258,8 +248,6 @@ const char prg_generate_rbg_base[] =
 "  float posy = float(texel.y) * vres_scale;\n"
 "  specialfunction_in = (supplementdata >> 9) & 0x1u; \n"
 "  specialcolorfunction_in = (supplementdata >> 8) & 0x1u; \n";
-
-char prg_generate_rbg[ sizeof(prg_generate_rbg_base) + 64 ] = {};
 
 const char prg_rbg_rpmd0_2w[] =
 "  paramid = 0; \n"
@@ -450,7 +438,7 @@ const char prg_rbg_get_pattern_data_1w[] =
 "  charaddr *= 0x20u;\n";
 
 const char prg_rbg_get_pattern_data_2w[] =
-"  patternname = vram[addr>>2]; \n"
+"  patternname = vram[addr>>2]; \n" 
 "  uint tmp1 = patternname & 0x7FFFu; \n"
 "  charaddr = patternname >> 16; \n"
 "  charaddr = (((charaddr >> 8) & 0xFFu) | ((charaddr) & 0xFFu) << 8);\n"
@@ -587,7 +575,7 @@ const char prg_rbg_getcolor_16bpp_palette[] =
 "  uint cramindex = 0u;\n"
 "  float alpha = alpha_;\n"
 "  uint dotaddr = charaddr + uint((y*cellw)+x) * 2u;\n"
-"  dot = vram[dotaddr>>2]; \n"
+"  dot = vram[dotaddr>>2]; \n" 
 "  if( (dotaddr & 0x02u) != 0u ) { dot >>= 16; } \n"
 "  dot = (((dot) >> 8 & 0xFF) | ((dot) & 0xFF) << 8);\n"
 "  if ( dot == 0 && transparencyenable != 0 ) { \n"
@@ -643,226 +631,226 @@ const char prg_generate_rbg_line_end[] =
 
 
 const GLchar * a_prg_rbg_0_2w_bitmap[] = {
-  prg_generate_rbg,
-  prg_rbg_rpmd0_2w,
-  prg_rbg_xy,
-  prg_rbg_get_bitmap,
-  prg_rbg_getcolor_8bpp,
-  prg_generate_rbg_end
+	prg_generate_rbg,
+	prg_rbg_rpmd0_2w,
+	prg_rbg_xy,
+	prg_rbg_get_bitmap,
+	prg_rbg_getcolor_8bpp,
+	prg_generate_rbg_end
 };
 
 const GLchar * a_prg_rbg_0_2w_p1_4bpp[] = {
-  prg_generate_rbg,
-  prg_rbg_rpmd0_2w,
-  prg_rbg_xy,
-  prg_rbg_overmode_repeat,
-  prg_rbg_get_patternaddr,
-  prg_rbg_get_pattern_data_1w,
-  prg_rbg_get_charaddr,
-  prg_rbg_getcolor_4bpp,
-  prg_generate_rbg_end };
+	prg_generate_rbg,
+	prg_rbg_rpmd0_2w,
+	prg_rbg_xy,
+	prg_rbg_overmode_repeat,
+	prg_rbg_get_patternaddr,
+	prg_rbg_get_pattern_data_1w,
+	prg_rbg_get_charaddr,
+	prg_rbg_getcolor_4bpp,
+	prg_generate_rbg_end };
 
 const GLchar * a_prg_rbg_0_2w_p2_4bpp[] = {
-  prg_generate_rbg,
-  prg_rbg_rpmd0_2w,
-  prg_rbg_xy,
-  prg_rbg_overmode_repeat,
-  prg_rbg_get_patternaddr,
-  prg_rbg_get_pattern_data_2w,
-  prg_rbg_get_charaddr,
-  prg_rbg_getcolor_4bpp,
-  prg_generate_rbg_end };
+	prg_generate_rbg,
+	prg_rbg_rpmd0_2w,
+	prg_rbg_xy,
+	prg_rbg_overmode_repeat,
+	prg_rbg_get_patternaddr,
+	prg_rbg_get_pattern_data_2w,
+	prg_rbg_get_charaddr,
+	prg_rbg_getcolor_4bpp,
+	prg_generate_rbg_end };
 
 const GLchar * a_prg_rbg_0_2w_p1_8bpp[] = {
-  prg_generate_rbg,
-  prg_rbg_rpmd0_2w,
-  prg_rbg_xy,
-  prg_rbg_overmode_repeat,
-  prg_rbg_get_patternaddr,
-  prg_rbg_get_pattern_data_1w,
-  prg_rbg_get_charaddr,
-  prg_rbg_getcolor_8bpp,
-  prg_generate_rbg_end };
+	prg_generate_rbg,
+	prg_rbg_rpmd0_2w,
+	prg_rbg_xy,
+	prg_rbg_overmode_repeat,
+	prg_rbg_get_patternaddr,
+	prg_rbg_get_pattern_data_1w,
+	prg_rbg_get_charaddr,
+	prg_rbg_getcolor_8bpp,
+	prg_generate_rbg_end };
 
 const GLchar * a_prg_rbg_0_2w_p2_8bpp[] = {
-  prg_generate_rbg,
-  prg_rbg_rpmd0_2w,
-  prg_rbg_xy,
-  prg_rbg_overmode_repeat,
-  prg_rbg_get_patternaddr,
-  prg_rbg_get_pattern_data_2w,
-  prg_rbg_get_charaddr,
-  prg_rbg_getcolor_8bpp,
-  prg_generate_rbg_end };
+	prg_generate_rbg,
+	prg_rbg_rpmd0_2w,
+	prg_rbg_xy,
+	prg_rbg_overmode_repeat,
+	prg_rbg_get_patternaddr,
+	prg_rbg_get_pattern_data_2w,
+	prg_rbg_get_charaddr,
+	prg_rbg_getcolor_8bpp,
+	prg_generate_rbg_end };
 
 //--------------------------------------------------
 // RPMD 1
 const GLchar * a_prg_rbg_1_2w_bitmap[] = {
-  prg_generate_rbg,
-  prg_rbg_rpmd1_2w,
-  prg_rbg_xy,
-  prg_rbg_get_bitmap,
-  prg_rbg_getcolor_8bpp,
-  prg_generate_rbg_end
+	prg_generate_rbg,
+	prg_rbg_rpmd1_2w,
+	prg_rbg_xy,
+	prg_rbg_get_bitmap,
+	prg_rbg_getcolor_8bpp,
+	prg_generate_rbg_end
 };
 
 const GLchar * a_prg_rbg_1_2w_p1_4bpp[] = {
-  prg_generate_rbg,
-  prg_rbg_rpmd1_2w,
-  prg_rbg_xy,
-  prg_rbg_overmode_repeat,
-  prg_rbg_get_patternaddr,
-  prg_rbg_get_pattern_data_1w,
-  prg_rbg_get_charaddr,
-  prg_rbg_getcolor_4bpp,
-  prg_generate_rbg_end };
+	prg_generate_rbg,
+	prg_rbg_rpmd1_2w,
+	prg_rbg_xy,
+	prg_rbg_overmode_repeat,
+	prg_rbg_get_patternaddr,
+	prg_rbg_get_pattern_data_1w,
+	prg_rbg_get_charaddr,
+	prg_rbg_getcolor_4bpp,
+	prg_generate_rbg_end };
 
 const GLchar * a_prg_rbg_1_2w_p2_4bpp[] = {
-  prg_generate_rbg,
-  prg_rbg_rpmd1_2w,
-  prg_rbg_xy,
-  prg_rbg_overmode_repeat,
-  prg_rbg_get_patternaddr,
-  prg_rbg_get_pattern_data_2w,
-  prg_rbg_get_charaddr,
-  prg_rbg_getcolor_4bpp,
-  prg_generate_rbg_end };
+	prg_generate_rbg,
+	prg_rbg_rpmd1_2w,
+	prg_rbg_xy,
+	prg_rbg_overmode_repeat,
+	prg_rbg_get_patternaddr,
+	prg_rbg_get_pattern_data_2w,
+	prg_rbg_get_charaddr,
+	prg_rbg_getcolor_4bpp,
+	prg_generate_rbg_end };
 
 const GLchar * a_prg_rbg_1_2w_p1_8bpp[] = {
-  prg_generate_rbg,
-  prg_rbg_rpmd1_2w,
-  prg_rbg_xy,
-  prg_rbg_overmode_repeat,
-  prg_rbg_get_patternaddr,
-  prg_rbg_get_pattern_data_1w,
-  prg_rbg_get_charaddr,
-  prg_rbg_getcolor_8bpp,
-  prg_generate_rbg_end };
+	prg_generate_rbg,
+	prg_rbg_rpmd1_2w,
+	prg_rbg_xy,
+	prg_rbg_overmode_repeat,
+	prg_rbg_get_patternaddr,
+	prg_rbg_get_pattern_data_1w,
+	prg_rbg_get_charaddr,
+	prg_rbg_getcolor_8bpp,
+	prg_generate_rbg_end };
 
 const GLchar * a_prg_rbg_1_2w_p2_8bpp[] = {
-  prg_generate_rbg,
-  prg_rbg_rpmd1_2w,
-  prg_rbg_xy,
-  prg_rbg_overmode_repeat,
-  prg_rbg_get_patternaddr,
-  prg_rbg_get_pattern_data_2w,
-  prg_rbg_get_charaddr,
-  prg_rbg_getcolor_8bpp,
-  prg_generate_rbg_end };
+	prg_generate_rbg,
+	prg_rbg_rpmd1_2w,
+	prg_rbg_xy,
+	prg_rbg_overmode_repeat,
+	prg_rbg_get_patternaddr,
+	prg_rbg_get_pattern_data_2w,
+	prg_rbg_get_charaddr,
+	prg_rbg_getcolor_8bpp,
+	prg_generate_rbg_end };
 
 
 //--------------------------------------------------
 // RPMD 2
 const GLchar * a_prg_rbg_2_2w_bitmap[] = {
-  prg_generate_rbg,
-  prg_rbg_rpmd2_2w,
-  prg_rbg_xy,
-  prg_rbg_get_bitmap,
-  prg_rbg_getcolor_8bpp,
-  prg_generate_rbg_end
+	prg_generate_rbg,
+	prg_rbg_rpmd2_2w,
+	prg_rbg_xy,
+	prg_rbg_get_bitmap,
+	prg_rbg_getcolor_8bpp,
+	prg_generate_rbg_end
 };
 
 const GLchar * a_prg_rbg_2_2w_p1_4bpp[] = {
-  prg_generate_rbg,
-  prg_rbg_rpmd2_2w,
-  prg_rbg_xy,
-  prg_rbg_overmode_repeat,
-  prg_rbg_get_patternaddr,
-  prg_rbg_get_pattern_data_1w,
-  prg_rbg_get_charaddr,
-  prg_rbg_getcolor_4bpp,
-  prg_generate_rbg_end };
+	prg_generate_rbg,
+	prg_rbg_rpmd2_2w,
+	prg_rbg_xy,
+	prg_rbg_overmode_repeat,
+	prg_rbg_get_patternaddr,
+	prg_rbg_get_pattern_data_1w,
+	prg_rbg_get_charaddr,
+	prg_rbg_getcolor_4bpp,
+	prg_generate_rbg_end };
 
 const GLchar * a_prg_rbg_2_2w_p2_4bpp[] = {
-  prg_generate_rbg,
-  prg_rbg_rpmd2_2w,
-  prg_rbg_xy,
-  prg_rbg_overmode_repeat,
-  prg_rbg_get_patternaddr,
-  prg_rbg_get_pattern_data_2w,
-  prg_rbg_get_charaddr,
-  prg_rbg_getcolor_4bpp,
-  prg_generate_rbg_end };
+	prg_generate_rbg,
+	prg_rbg_rpmd2_2w,
+	prg_rbg_xy,
+	prg_rbg_overmode_repeat,
+	prg_rbg_get_patternaddr,
+	prg_rbg_get_pattern_data_2w,
+	prg_rbg_get_charaddr,
+	prg_rbg_getcolor_4bpp,
+	prg_generate_rbg_end };
 
 const GLchar * a_prg_rbg_2_2w_p1_8bpp[] = {
-  prg_generate_rbg,
-  prg_rbg_rpmd2_2w,
-  prg_rbg_xy,
-  prg_rbg_overmode_repeat,
-  prg_rbg_get_patternaddr,
-  prg_rbg_get_pattern_data_1w,
-  prg_rbg_get_charaddr,
-  prg_rbg_getcolor_8bpp,
-  prg_generate_rbg_end };
+	prg_generate_rbg,
+	prg_rbg_rpmd2_2w,
+	prg_rbg_xy,
+	prg_rbg_overmode_repeat,
+	prg_rbg_get_patternaddr,
+	prg_rbg_get_pattern_data_1w,
+	prg_rbg_get_charaddr,
+	prg_rbg_getcolor_8bpp,
+	prg_generate_rbg_end };
 
 const GLchar * a_prg_rbg_2_2w_p2_8bpp[] = {
-  prg_generate_rbg,
-  prg_rbg_rpmd2_2w,
-  prg_rbg_xy,
-  prg_rbg_overmode_repeat,
-  prg_rbg_get_patternaddr,
-  prg_rbg_get_pattern_data_2w,
-  prg_rbg_get_charaddr,
-  prg_rbg_getcolor_8bpp,
-  prg_generate_rbg_end };
+	prg_generate_rbg,
+	prg_rbg_rpmd2_2w,
+	prg_rbg_xy,
+	prg_rbg_overmode_repeat,
+	prg_rbg_get_patternaddr,
+	prg_rbg_get_pattern_data_2w,
+	prg_rbg_get_charaddr,
+	prg_rbg_getcolor_8bpp,
+	prg_generate_rbg_end };
 
 //--------------------------------------------------
 // RPMD 3
 const GLchar * a_prg_rbg_3_2w_bitmap[] = {
-  prg_generate_rbg,
-  prg_get_param_mode03,
-  prg_rbg_xy,
-  prg_rbg_get_bitmap,
-  prg_rbg_getcolor_8bpp,
-  prg_generate_rbg_end
+	prg_generate_rbg,
+	prg_get_param_mode03,
+	prg_rbg_xy,
+	prg_rbg_get_bitmap,
+	prg_rbg_getcolor_8bpp,
+	prg_generate_rbg_end
 };
 
 const GLchar * a_prg_rbg_3_2w_p1_4bpp[] = {
-  prg_generate_rbg,
-  prg_get_param_mode03,
-  prg_rbg_xy,
-  prg_rbg_overmode_repeat,
-  prg_rbg_get_patternaddr,
-  prg_rbg_get_pattern_data_1w,
-  prg_rbg_get_charaddr,
-  prg_rbg_getcolor_4bpp,
-  prg_generate_rbg_end };
+	prg_generate_rbg,
+	prg_get_param_mode03,
+	prg_rbg_xy,
+	prg_rbg_overmode_repeat,
+	prg_rbg_get_patternaddr,
+	prg_rbg_get_pattern_data_1w,
+	prg_rbg_get_charaddr,
+	prg_rbg_getcolor_4bpp,
+	prg_generate_rbg_end };
 
 const GLchar * a_prg_rbg_3_2w_p2_4bpp[] = {
-  prg_generate_rbg,
-  prg_get_param_mode03,
-  prg_rbg_xy,
-  prg_rbg_overmode_repeat,
-  prg_rbg_get_patternaddr,
-  prg_rbg_get_pattern_data_2w,
-  prg_rbg_get_charaddr,
-  prg_rbg_getcolor_4bpp,
-  prg_generate_rbg_end };
+	prg_generate_rbg,
+	prg_get_param_mode03,
+	prg_rbg_xy,
+	prg_rbg_overmode_repeat,
+	prg_rbg_get_patternaddr,
+	prg_rbg_get_pattern_data_2w,
+	prg_rbg_get_charaddr,
+	prg_rbg_getcolor_4bpp,
+	prg_generate_rbg_end };
 
 const GLchar * a_prg_rbg_3_2w_p1_8bpp[] = {
-  prg_generate_rbg,
-  prg_get_param_mode03,
-  prg_rbg_xy,
-  prg_rbg_overmode_repeat,
-  prg_rbg_get_patternaddr,
-  prg_rbg_get_pattern_data_1w,
-  prg_rbg_get_charaddr,
-  prg_rbg_getcolor_8bpp,
-  prg_generate_rbg_end };
+	prg_generate_rbg,
+	prg_get_param_mode03,
+	prg_rbg_xy,
+	prg_rbg_overmode_repeat,
+	prg_rbg_get_patternaddr,
+	prg_rbg_get_pattern_data_1w,
+	prg_rbg_get_charaddr,
+	prg_rbg_getcolor_8bpp,
+	prg_generate_rbg_end };
 
 const GLchar * a_prg_rbg_3_2w_p2_8bpp[] = {
-  prg_generate_rbg,
-  prg_get_param_mode03,
-  prg_rbg_xy,
-  prg_rbg_overmode_repeat,
-  prg_rbg_get_patternaddr,
-  prg_rbg_get_pattern_data_2w,
-  prg_rbg_get_charaddr,
-  prg_rbg_getcolor_8bpp,
-  prg_generate_rbg_end };
+	prg_generate_rbg,
+	prg_get_param_mode03,
+	prg_rbg_xy,
+	prg_rbg_overmode_repeat,
+	prg_rbg_get_patternaddr,
+	prg_rbg_get_pattern_data_2w,
+	prg_rbg_get_charaddr,
+	prg_rbg_getcolor_8bpp,
+	prg_generate_rbg_end };
 
 
-struct RBGUniform {
+struct RBGUniform { 
   RBGUniform() {
     pagesize = 0;
     patternshift = 0;
@@ -875,11 +863,11 @@ struct RBGUniform {
     coloroffset = 0;
     transparencyenable = 0;
     specialcolormode = 0;
-    specialcolorfunction = 0;
-    specialcode = 0;
-    window_area_mode = 0;
-    alpha_ = 0.0;
-    cram_shift = 1;
+    specialcolorfunction=0;
+    specialcode=0;
+	  window_area_mode = 0;
+	  alpha_ = 0.0;
+	  cram_shift = 1;
     hires_shift = 0;
     specialprimode = 0;
     priority = 0;
@@ -889,7 +877,7 @@ struct RBGUniform {
   int cellw;
   int cellh;
   int paladdr_;
-  int pagesize;
+  int pagesize; 
   int patternshift;
   int planew;
   int pagewh;
@@ -911,7 +899,7 @@ struct RBGUniform {
   unsigned int priority;
 };
 
-class RBGGenerator {
+class RBGGenerator{
   GLuint prg_rbg_0_2w_bitmap_4bpp_ = 0;
   GLuint prg_rbg_0_2w_bitmap_8bpp_ = 0;
   GLuint prg_rbg_0_2w_bitmap_16bpp_p_ = 0;
@@ -991,7 +979,7 @@ class RBGGenerator {
   GLuint prg_rbg_0_2w_p2_16bpp_line_ = 0;
   GLuint prg_rbg_0_2w_p1_32bpp_line_ = 0;
   GLuint prg_rbg_0_2w_p2_32bpp_line_ = 0;
-
+  
   GLuint prg_rbg_1_2w_bitmap_4bpp_line_ = 0;
   GLuint prg_rbg_1_2w_bitmap_8bpp_line_ = 0;
   GLuint prg_rbg_1_2w_bitmap_16bpp_p_line_ = 0;
@@ -1007,7 +995,7 @@ class RBGGenerator {
   GLuint prg_rbg_1_2w_p2_16bpp_line_ = 0;
   GLuint prg_rbg_1_2w_p1_32bpp_line_ = 0;
   GLuint prg_rbg_1_2w_p2_32bpp_line_ = 0;
-
+  
   GLuint prg_rbg_2_2w_bitmap_4bpp_line_ = 0;
   GLuint prg_rbg_2_2w_bitmap_8bpp_line_ = 0;
   GLuint prg_rbg_2_2w_bitmap_16bpp_p_line_ = 0;
@@ -1054,20 +1042,17 @@ class RBGGenerator {
   int struct_size_;
 
   void * mapped_vram = nullptr;
-
-  int local_size_x = 10;
-  int local_size_y = 10;
-
+  
 protected:
   RBGGenerator() {
     tex_surface_ = 0;
     tex_width_ = 0;
     tex_height_ = 0;
-    struct_size_ = sizeof(vdp2rotationparameter_struct);
-    int am = sizeof(vdp2rotationparameter_struct) % 16;
-    if (am != 0) {
-      struct_size_ += 16 - am;
-    }
+	struct_size_ = sizeof(vdp2rotationparameter_struct);
+	int am = sizeof(vdp2rotationparameter_struct) % 16;
+	if (am != 0) {
+		struct_size_ += 16 - am;
+	}
   }
 
 public:
@@ -1079,233 +1064,211 @@ public:
   }
 
   void resize(int width, int height) {
-    if (tex_width_ == width && tex_height_ == height) return;
+	if (tex_width_ == width && tex_height_ == height) return;
 
-    YGLDEBUG("resize %d, %d\n", width, height);
+	YGLDEBUG("resize %d, %d\n",width,height);
 
-    glGetError();
+	glGetError();
 
-    if (tex_surface_ != 0) {
-      glDeleteTextures(1, &tex_surface_);
-      tex_surface_ = 0;
-    }
+	if (tex_surface_ != 0) {
+		glDeleteTextures(1, &tex_surface_);
+		tex_surface_ = 0;
+	}
 
-    glGenTextures(1, &tex_surface_);
-    ErrorHandle("glGenTextures");
+	glGenTextures(1, &tex_surface_);
+	ErrorHandle("glGenTextures");
 
-    tex_width_ = width;
-    tex_height_ = height;
+	tex_width_ = width;
+	tex_height_ = height;
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, tex_surface_);
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-    ErrorHandle("glBindTexture");
-    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, tex_width_, tex_height_, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, tex_width_, tex_height_);
-    ErrorHandle("glTexStorage2D");
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    ErrorHandle("glTexParameteri");
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, tex_surface_);
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+	ErrorHandle("glBindTexture");
+	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, tex_width_, tex_height_, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, tex_width_, tex_height_);
+	ErrorHandle("glTexStorage2D");
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	ErrorHandle("glTexParameteri");
 
-    if (tex_surface_1 != 0) {
-      glDeleteTextures(1, &tex_surface_1);
-      glGenTextures(1, &tex_surface_1);
-      glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D, tex_surface_1);
-      glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-      ErrorHandle("glBindTexture");
-      //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, tex_width_, tex_height_, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-      glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, tex_width_, tex_height_);
-      ErrorHandle("glTexStorage2D");
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-      ErrorHandle("glTexParameteri");
-    }
+	if (tex_surface_1 != 0) {
+		glDeleteTextures(1, &tex_surface_1);
+		glGenTextures(1, &tex_surface_1);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, tex_surface_1);
+		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+		ErrorHandle("glBindTexture");
+		//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, tex_width_, tex_height_, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, tex_width_, tex_height_);
+		ErrorHandle("glTexStorage2D");
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		ErrorHandle("glTexParameteri");
+	}
 
-    YGLDEBUG("resize tex_surface_=%d, tex_surface_1=%d\n", tex_surface_, tex_surface_1);
+	YGLDEBUG("resize tex_surface_=%d, tex_surface_1=%d\n",tex_surface_,tex_surface_1);
 
   }
 
   GLuint createProgram(int count, const GLchar** prg_strs) {
-    GLuint result = glCreateShader(GL_COMPUTE_SHADER);
-    glShaderSource(result, count, prg_strs, NULL);
-    glCompileShader(result);
-    GLint status;
-    glGetShaderiv(result, GL_COMPILE_STATUS, &status);
-    if (status == GL_FALSE) {
-      GLint length;
-      glGetShaderiv(result, GL_INFO_LOG_LENGTH, &length);
-      GLchar *info = new GLchar[length];
-      glGetShaderInfoLog(result, length, NULL, info);
-      YGLDEBUG("[COMPILE] %s\n", info);
-      YuiErrorMsg(info);
-      FILE * fp = fopen("tmp.cpp", "w");
-      if (fp) {
-        for (int i = 0; i < count; i++) {
-          fprintf(fp, "%s", prg_strs[i]);
-        }
-        fclose(fp);
-      }
-
-      YabThreadUSleep(1000000);
-      abort();
-      delete[] info;
-    }
-    GLuint program = glCreateProgram();
-    glAttachShader(program, result);
-    glLinkProgram(program);
-    glDetachShader(program, result);
-    glGetProgramiv(program, GL_LINK_STATUS, &status);
-    if (status == GL_FALSE) {
-      GLint length;
-      glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
-      GLchar *info = new GLchar[length];
-      glGetProgramInfoLog(program, length, NULL, info);
-      YGLDEBUG("[LINK] %s\n", info);
-      YuiErrorMsg(info);
-      FILE * fp = fopen("tmp.cpp", "w");
-      if (fp) {
-        for (int i = 0; i < count; i++) {
-          fprintf(fp, "%s", prg_strs[i]);
-        }
-        fclose(fp);
-      }
-
-      YabThreadUSleep(1000000);
-      abort();
-      delete[] info;
-    }
-    return program;
+	  GLuint result = glCreateShader(GL_COMPUTE_SHADER);
+	  glShaderSource(result, count, prg_strs, NULL);
+	  glCompileShader(result);
+	  GLint status;
+	  glGetShaderiv(result, GL_COMPILE_STATUS, &status);
+	  if (status == GL_FALSE) {
+		  GLint length;
+		  glGetShaderiv(result, GL_INFO_LOG_LENGTH, &length);
+		  GLchar *info = new GLchar[length];
+		  glGetShaderInfoLog(result, length, NULL, info);
+		  YGLDEBUG("[COMPILE] %s\n", info);
+		  FILE * fp = fopen("tmp.cpp", "w");
+			if( fp ) {
+				for (int i = 0; i < count; i++) {
+					fprintf(fp,"%s", prg_strs[i]);
+				}
+				fclose(fp);
+			}
+		  abort();
+		  delete[] info;
+	  }
+	  GLuint program = glCreateProgram();
+	  glAttachShader(program, result);
+	  glLinkProgram(program);
+	  glDetachShader(program, result);
+	  glGetProgramiv(program, GL_LINK_STATUS, &status);
+	  if (status == GL_FALSE) {
+		  GLint length;
+		  glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
+		  GLchar *info = new GLchar[length];
+		  glGetProgramInfoLog(program, length, NULL, info);
+		  YGLDEBUG("[LINK] %s\n", info);
+		  FILE * fp = fopen("tmp.cpp", "w");
+			if( fp ) {
+				for (int i = 0; i < count; i++) {
+					fprintf(fp,"%s", prg_strs[i]);
+				}
+				fclose(fp);
+			}
+		  YabThreadUSleep(1000000);  
+		  abort();
+		  delete[] info;
+	  }
+	  return program;
   }
 
   //----------------------------------------------- 
-  void init(int width, int height) {
+  void init( int width, int height ) {
 
-    resize(width, height);
-    if (ssbo_vram_ != 0) return; // always inisialized!
+	resize(width,height);
+	if (ssbo_vram_ != 0) return; // always inisialized!
 
-    glGenBuffers(1, &ssbo_vram_);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_vram_);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, 0x80000, (void*)Vdp2Ram, GL_DYNAMIC_DRAW);
+  glGenBuffers(1, &ssbo_vram_);
+  glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_vram_);
+  glBufferData(GL_SHADER_STORAGE_BUFFER, 0x80000,(void*)Vdp2Ram,GL_DYNAMIC_DRAW);
 
-    glGenBuffers(1, &ssbo_paraA_);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_paraA_);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, struct_size_ * 2, NULL, GL_DYNAMIC_DRAW);
+  glGenBuffers(1, &ssbo_paraA_);
+  glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_paraA_);
+  glBufferData(GL_SHADER_STORAGE_BUFFER, struct_size_*2, NULL, GL_DYNAMIC_DRAW);
 
-    glGenBuffers(1, &scene_uniform);
-    glBindBuffer(GL_UNIFORM_BUFFER, scene_uniform);
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(RBGUniform), &uniform, GL_STATIC_DRAW);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+  glGenBuffers(1, &scene_uniform);
+  glBindBuffer(GL_UNIFORM_BUFFER, scene_uniform);
+  glBufferData(GL_UNIFORM_BUFFER, sizeof(RBGUniform), &uniform, GL_STATIC_DRAW);
+  glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-    glGenBuffers(1, &ssbo_window_);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_window_);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(vdp2WindowInfo) * 512, NULL, GL_DYNAMIC_DRAW);
+	glGenBuffers(1, &ssbo_window_);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_window_);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(vdp2WindowInfo)*512, NULL, GL_DYNAMIC_DRAW);
+	
+	//prg_rbg_0_2w_bitmap_8bpp_ = createProgram(sizeof(a_prg_rbg_0_2w_bitmap) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_bitmap);
+	//prg_rbg_0_2w_p1_4bpp_ = createProgram(sizeof(a_prg_rbg_0_2w_p1_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_p1_4bpp);
+	//prg_rbg_0_2w_p2_4bpp_ = createProgram(sizeof(a_prg_rbg_0_2w_p2_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_p2_4bpp);
+	//prg_rbg_0_2w_p1_8bpp_ = createProgram(sizeof(a_prg_rbg_0_2w_p1_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_p1_8bpp);
+	//prg_rbg_0_2w_p2_8bpp_ = createProgram(sizeof(a_prg_rbg_0_2w_p2_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_p2_8bpp);
 
-    GLint workGroupCount[3], workGroupSize[3];
-    GLint maxInvocations;
-    glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &maxInvocations);
-    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &workGroupCount[0]);
-    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, &workGroupCount[1]);
-    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, &workGroupCount[2]);
-    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &workGroupSize[0]);
-    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &workGroupSize[1]);
-    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &workGroupSize[2]);
+	//prg_rbg_1_2w_bitmap_8bpp_ = createProgram(sizeof(a_prg_rbg_1_2w_bitmap) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_bitmap);
+	//prg_rbg_1_2w_p1_4bpp_ = createProgram(sizeof(a_prg_rbg_1_2w_p1_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_p1_4bpp);
+	//prg_rbg_1_2w_p2_4bpp_ = createProgram(sizeof(a_prg_rbg_1_2w_p2_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_p2_4bpp);
+	//prg_rbg_1_2w_p1_8bpp_ = createProgram(sizeof(a_prg_rbg_1_2w_p1_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_p1_8bpp);
+	//prg_rbg_1_2w_p2_8bpp_ = createProgram(sizeof(a_prg_rbg_1_2w_p2_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_p2_8bpp);
 
-    local_size_x = sqrtf(maxInvocations);
-    local_size_y = sqrtf(maxInvocations);
+	//prg_rbg_2_2w_bitmap_8bpp_ = createProgram(sizeof(a_prg_rbg_2_2w_bitmap) / sizeof(char*), (const GLchar**)a_prg_rbg_2_2w_bitmap);
+	//prg_rbg_2_2w_p1_4bpp_ = createProgram(sizeof(a_prg_rbg_2_2w_p1_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_2_2w_p1_4bpp);
+	//prg_rbg_2_2w_p2_4bpp_ = createProgram(sizeof(a_prg_rbg_2_2w_p2_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_2_2w_p2_4bpp);
+	//prg_rbg_2_2w_p1_8bpp_ = createProgram(sizeof(a_prg_rbg_2_2w_p1_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_2_2w_p1_8bpp);
+	//prg_rbg_2_2w_p2_8bpp_ = createProgram( sizeof(a_prg_rbg_2_2w_p2_8bpp)/sizeof(char*) , (const GLchar**)a_prg_rbg_2_2w_p2_8bpp);
 
-    int length = sizeof(prg_generate_rbg_base) + 64;
-    snprintf(prg_generate_rbg,length,prg_generate_rbg_base,local_size_x,local_size_y);
-
-
-    //prg_rbg_0_2w_bitmap_8bpp_ = createProgram(sizeof(a_prg_rbg_0_2w_bitmap) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_bitmap);
-    //prg_rbg_0_2w_p1_4bpp_ = createProgram(sizeof(a_prg_rbg_0_2w_p1_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_p1_4bpp);
-    //prg_rbg_0_2w_p2_4bpp_ = createProgram(sizeof(a_prg_rbg_0_2w_p2_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_p2_4bpp);
-    //prg_rbg_0_2w_p1_8bpp_ = createProgram(sizeof(a_prg_rbg_0_2w_p1_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_p1_8bpp);
-    //prg_rbg_0_2w_p2_8bpp_ = createProgram(sizeof(a_prg_rbg_0_2w_p2_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_p2_8bpp);
-
-    //prg_rbg_1_2w_bitmap_8bpp_ = createProgram(sizeof(a_prg_rbg_1_2w_bitmap) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_bitmap);
-    //prg_rbg_1_2w_p1_4bpp_ = createProgram(sizeof(a_prg_rbg_1_2w_p1_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_p1_4bpp);
-    //prg_rbg_1_2w_p2_4bpp_ = createProgram(sizeof(a_prg_rbg_1_2w_p2_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_p2_4bpp);
-    //prg_rbg_1_2w_p1_8bpp_ = createProgram(sizeof(a_prg_rbg_1_2w_p1_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_p1_8bpp);
-    //prg_rbg_1_2w_p2_8bpp_ = createProgram(sizeof(a_prg_rbg_1_2w_p2_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_p2_8bpp);
-
-    //prg_rbg_2_2w_bitmap_8bpp_ = createProgram(sizeof(a_prg_rbg_2_2w_bitmap) / sizeof(char*), (const GLchar**)a_prg_rbg_2_2w_bitmap);
-    //prg_rbg_2_2w_p1_4bpp_ = createProgram(sizeof(a_prg_rbg_2_2w_p1_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_2_2w_p1_4bpp);
-    //prg_rbg_2_2w_p2_4bpp_ = createProgram(sizeof(a_prg_rbg_2_2w_p2_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_2_2w_p2_4bpp);
-    //prg_rbg_2_2w_p1_8bpp_ = createProgram(sizeof(a_prg_rbg_2_2w_p1_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_2_2w_p1_8bpp);
-    //prg_rbg_2_2w_p2_8bpp_ = createProgram( sizeof(a_prg_rbg_2_2w_p2_8bpp)/sizeof(char*) , (const GLchar**)a_prg_rbg_2_2w_p2_8bpp);
-
-    //prg_rbg_3_2w_bitmap_8bpp_ = createProgram(sizeof(a_prg_rbg_3_2w_bitmap) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_bitmap);
-    //prg_rbg_3_2w_p1_4bpp_ = createProgram(sizeof(a_prg_rbg_3_2w_p1_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_p1_4bpp);
-    //prg_rbg_3_2w_p2_4bpp_ = createProgram(sizeof(a_prg_rbg_3_2w_p2_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_p2_4bpp);
-    //prg_rbg_3_2w_p1_8bpp_ = createProgram(sizeof(a_prg_rbg_3_2w_p1_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_p1_8bpp);
-    //prg_rbg_3_2w_p2_8bpp_ = createProgram(sizeof(a_prg_rbg_3_2w_p2_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_p2_8bpp);
+	//prg_rbg_3_2w_bitmap_8bpp_ = createProgram(sizeof(a_prg_rbg_3_2w_bitmap) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_bitmap);
+	//prg_rbg_3_2w_p1_4bpp_ = createProgram(sizeof(a_prg_rbg_3_2w_p1_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_p1_4bpp);
+	//prg_rbg_3_2w_p2_4bpp_ = createProgram(sizeof(a_prg_rbg_3_2w_p2_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_p2_4bpp);
+	//prg_rbg_3_2w_p1_8bpp_ = createProgram(sizeof(a_prg_rbg_3_2w_p1_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_p1_8bpp);
+	//prg_rbg_3_2w_p2_8bpp_ = createProgram(sizeof(a_prg_rbg_3_2w_p2_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_p2_8bpp);
 
 
-    //a_prg_rbg_0_2w_bitmap[sizeof(a_prg_rbg_0_2w_bitmap) / sizeof(char*) -1] = prg_generate_rbg_line_end;
-    //prg_rbg_0_2w_bitmap_8bpp_line_ = createProgram(sizeof(a_prg_rbg_0_2w_bitmap) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_bitmap);
+	//a_prg_rbg_0_2w_bitmap[sizeof(a_prg_rbg_0_2w_bitmap) / sizeof(char*) -1] = prg_generate_rbg_line_end;
+	//prg_rbg_0_2w_bitmap_8bpp_line_ = createProgram(sizeof(a_prg_rbg_0_2w_bitmap) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_bitmap);
 
-    //a_prg_rbg_0_2w_p1_4bpp[sizeof(a_prg_rbg_0_2w_p1_4bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
-    //prg_rbg_0_2w_p1_4bpp_line_ = createProgram(sizeof(a_prg_rbg_0_2w_p1_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_p1_4bpp);
+	//a_prg_rbg_0_2w_p1_4bpp[sizeof(a_prg_rbg_0_2w_p1_4bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
+	//prg_rbg_0_2w_p1_4bpp_line_ = createProgram(sizeof(a_prg_rbg_0_2w_p1_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_p1_4bpp);
 
-    //a_prg_rbg_0_2w_p2_4bpp[sizeof(a_prg_rbg_0_2w_p2_4bpp) / sizeof(char*) -1] = prg_generate_rbg_line_end;
-    //prg_rbg_0_2w_p2_4bpp_line_ = createProgram(sizeof(a_prg_rbg_0_2w_p2_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_p2_4bpp);
+	//a_prg_rbg_0_2w_p2_4bpp[sizeof(a_prg_rbg_0_2w_p2_4bpp) / sizeof(char*) -1] = prg_generate_rbg_line_end;
+	//prg_rbg_0_2w_p2_4bpp_line_ = createProgram(sizeof(a_prg_rbg_0_2w_p2_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_p2_4bpp);
 
-    //a_prg_rbg_0_2w_p1_8bpp[sizeof(a_prg_rbg_0_2w_p1_8bpp) / sizeof(char*) -1] = prg_generate_rbg_line_end;
-    //prg_rbg_0_2w_p1_8bpp_line_ = createProgram(sizeof(a_prg_rbg_0_2w_p1_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_p1_8bpp);
+	//a_prg_rbg_0_2w_p1_8bpp[sizeof(a_prg_rbg_0_2w_p1_8bpp) / sizeof(char*) -1] = prg_generate_rbg_line_end;
+	//prg_rbg_0_2w_p1_8bpp_line_ = createProgram(sizeof(a_prg_rbg_0_2w_p1_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_p1_8bpp);
 
-    //a_prg_rbg_0_2w_p2_8bpp[sizeof(a_prg_rbg_0_2w_p2_8bpp) / sizeof(char*) -1] = prg_generate_rbg_line_end;
-    //prg_rbg_0_2w_p2_8bpp_line_ = createProgram(sizeof(a_prg_rbg_0_2w_p2_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_p2_8bpp);
+	//a_prg_rbg_0_2w_p2_8bpp[sizeof(a_prg_rbg_0_2w_p2_8bpp) / sizeof(char*) -1] = prg_generate_rbg_line_end;
+	//prg_rbg_0_2w_p2_8bpp_line_ = createProgram(sizeof(a_prg_rbg_0_2w_p2_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_0_2w_p2_8bpp);
 
-    //a_prg_rbg_1_2w_bitmap[sizeof(a_prg_rbg_1_2w_bitmap) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
-    //prg_rbg_1_2w_bitmap_8bpp_line_ = createProgram(sizeof(a_prg_rbg_1_2w_bitmap) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_bitmap);
+	//a_prg_rbg_1_2w_bitmap[sizeof(a_prg_rbg_1_2w_bitmap) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
+	//prg_rbg_1_2w_bitmap_8bpp_line_ = createProgram(sizeof(a_prg_rbg_1_2w_bitmap) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_bitmap);
 
-    //a_prg_rbg_1_2w_p1_4bpp[sizeof(a_prg_rbg_1_2w_p1_4bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
-    //prg_rbg_1_2w_p1_4bpp_line_ = createProgram(sizeof(a_prg_rbg_1_2w_p1_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_p1_4bpp);
+	//a_prg_rbg_1_2w_p1_4bpp[sizeof(a_prg_rbg_1_2w_p1_4bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
+	//prg_rbg_1_2w_p1_4bpp_line_ = createProgram(sizeof(a_prg_rbg_1_2w_p1_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_p1_4bpp);
 
-    //a_prg_rbg_1_2w_p2_4bpp[sizeof(a_prg_rbg_1_2w_p2_4bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
-    //prg_rbg_1_2w_p2_4bpp_line_ = createProgram(sizeof(a_prg_rbg_1_2w_p2_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_p2_4bpp);
+	//a_prg_rbg_1_2w_p2_4bpp[sizeof(a_prg_rbg_1_2w_p2_4bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
+	//prg_rbg_1_2w_p2_4bpp_line_ = createProgram(sizeof(a_prg_rbg_1_2w_p2_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_p2_4bpp);
 
-    //a_prg_rbg_1_2w_p1_8bpp[sizeof(a_prg_rbg_1_2w_p1_8bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
-    //prg_rbg_1_2w_p1_8bpp_line_ = createProgram(sizeof(a_prg_rbg_1_2w_p1_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_p1_8bpp);
+	//a_prg_rbg_1_2w_p1_8bpp[sizeof(a_prg_rbg_1_2w_p1_8bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
+	//prg_rbg_1_2w_p1_8bpp_line_ = createProgram(sizeof(a_prg_rbg_1_2w_p1_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_p1_8bpp);
 
-    //a_prg_rbg_1_2w_p2_8bpp[sizeof(a_prg_rbg_1_2w_p2_8bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
-    //prg_rbg_1_2w_p2_8bpp_line_ = createProgram(sizeof(a_prg_rbg_1_2w_p2_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_p2_8bpp);
+	//a_prg_rbg_1_2w_p2_8bpp[sizeof(a_prg_rbg_1_2w_p2_8bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
+	//prg_rbg_1_2w_p2_8bpp_line_ = createProgram(sizeof(a_prg_rbg_1_2w_p2_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_1_2w_p2_8bpp);
 
-    //a_prg_rbg_2_2w_bitmap[sizeof(a_prg_rbg_2_2w_bitmap) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
-    //prg_rbg_2_2w_bitmap_8bpp_line_ = createProgram(sizeof(a_prg_rbg_2_2w_bitmap) / sizeof(char*), (const GLchar**)a_prg_rbg_2_2w_bitmap);
+	//a_prg_rbg_2_2w_bitmap[sizeof(a_prg_rbg_2_2w_bitmap) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
+	//prg_rbg_2_2w_bitmap_8bpp_line_ = createProgram(sizeof(a_prg_rbg_2_2w_bitmap) / sizeof(char*), (const GLchar**)a_prg_rbg_2_2w_bitmap);
 
-    //a_prg_rbg_2_2w_p1_4bpp[sizeof(a_prg_rbg_2_2w_p1_4bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
-    //prg_rbg_2_2w_p1_4bpp_line_ = createProgram(sizeof(a_prg_rbg_2_2w_p1_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_2_2w_p1_4bpp);
+	//a_prg_rbg_2_2w_p1_4bpp[sizeof(a_prg_rbg_2_2w_p1_4bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
+	//prg_rbg_2_2w_p1_4bpp_line_ = createProgram(sizeof(a_prg_rbg_2_2w_p1_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_2_2w_p1_4bpp);
 
-    //a_prg_rbg_2_2w_p2_4bpp[sizeof(a_prg_rbg_2_2w_p2_4bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
-    //prg_rbg_2_2w_p2_4bpp_line_ = createProgram(sizeof(a_prg_rbg_2_2w_p2_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_2_2w_p2_4bpp);
+	//a_prg_rbg_2_2w_p2_4bpp[sizeof(a_prg_rbg_2_2w_p2_4bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
+	//prg_rbg_2_2w_p2_4bpp_line_ = createProgram(sizeof(a_prg_rbg_2_2w_p2_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_2_2w_p2_4bpp);
 
-    //a_prg_rbg_2_2w_p1_8bpp[sizeof(a_prg_rbg_2_2w_p1_8bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
-    //prg_rbg_2_2w_p1_8bpp_line_ = createProgram(sizeof(a_prg_rbg_2_2w_p1_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_2_2w_p1_8bpp);
+	//a_prg_rbg_2_2w_p1_8bpp[sizeof(a_prg_rbg_2_2w_p1_8bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
+	//prg_rbg_2_2w_p1_8bpp_line_ = createProgram(sizeof(a_prg_rbg_2_2w_p1_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_2_2w_p1_8bpp);
 
-    //a_prg_rbg_2_2w_p2_8bpp[sizeof(a_prg_rbg_2_2w_p2_8bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
-    //prg_rbg_2_2w_p2_8bpp_line_ = createProgram(sizeof(a_prg_rbg_2_2w_p2_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_2_2w_p2_8bpp);
+	//a_prg_rbg_2_2w_p2_8bpp[sizeof(a_prg_rbg_2_2w_p2_8bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
+	//prg_rbg_2_2w_p2_8bpp_line_ = createProgram(sizeof(a_prg_rbg_2_2w_p2_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_2_2w_p2_8bpp);
 
-    //a_prg_rbg_3_2w_bitmap[sizeof(a_prg_rbg_3_2w_bitmap) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
-    //prg_rbg_3_2w_bitmap_8bpp_line_ = createProgram(sizeof(a_prg_rbg_3_2w_bitmap) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_bitmap);
+	//a_prg_rbg_3_2w_bitmap[sizeof(a_prg_rbg_3_2w_bitmap) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
+	//prg_rbg_3_2w_bitmap_8bpp_line_ = createProgram(sizeof(a_prg_rbg_3_2w_bitmap) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_bitmap);
 
-    //a_prg_rbg_3_2w_p1_4bpp[sizeof(a_prg_rbg_3_2w_p1_4bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
-    //prg_rbg_3_2w_p1_4bpp_line_ = createProgram(sizeof(a_prg_rbg_3_2w_p1_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_p1_4bpp);
+	//a_prg_rbg_3_2w_p1_4bpp[sizeof(a_prg_rbg_3_2w_p1_4bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
+	//prg_rbg_3_2w_p1_4bpp_line_ = createProgram(sizeof(a_prg_rbg_3_2w_p1_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_p1_4bpp);
 
-    //a_prg_rbg_3_2w_p2_4bpp[sizeof(a_prg_rbg_3_2w_p2_4bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
-    //prg_rbg_3_2w_p2_4bpp_line_ = createProgram(sizeof(a_prg_rbg_3_2w_p2_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_p2_4bpp);
+	//a_prg_rbg_3_2w_p2_4bpp[sizeof(a_prg_rbg_3_2w_p2_4bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
+	//prg_rbg_3_2w_p2_4bpp_line_ = createProgram(sizeof(a_prg_rbg_3_2w_p2_4bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_p2_4bpp);
 
-    //a_prg_rbg_3_2w_p1_8bpp[sizeof(a_prg_rbg_3_2w_p1_8bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
-    //prg_rbg_3_2w_p1_8bpp_line_ = createProgram(sizeof(a_prg_rbg_3_2w_p1_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_p1_8bpp);
+	//a_prg_rbg_3_2w_p1_8bpp[sizeof(a_prg_rbg_3_2w_p1_8bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
+	//prg_rbg_3_2w_p1_8bpp_line_ = createProgram(sizeof(a_prg_rbg_3_2w_p1_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_p1_8bpp);
 
-    //a_prg_rbg_3_2w_p2_8bpp[sizeof(a_prg_rbg_3_2w_p2_8bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
-    //prg_rbg_3_2w_p2_8bpp_line_ = createProgram(sizeof(a_prg_rbg_3_2w_p2_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_p2_8bpp);
+	//a_prg_rbg_3_2w_p2_8bpp[sizeof(a_prg_rbg_3_2w_p2_8bpp) / sizeof(char*) - 1] = prg_generate_rbg_line_end;
+	//prg_rbg_3_2w_p2_8bpp_line_ = createProgram(sizeof(a_prg_rbg_3_2w_p2_8bpp) / sizeof(char*), (const GLchar**)a_prg_rbg_3_2w_p2_8bpp);
 
   }
 
@@ -1325,10 +1288,8 @@ public:
       case GL_INVALID_FRAMEBUFFER_OPERATION:  msg = "INVALID_FRAMEBUFFER_OPERATION"; break;
       default:  msg = "Unknown"; break;
       }
-      char errorbuf[256];
-      snprintf(errorbuf,256,"GLErrorLayer:ERROR:%04x'%s' %s\n", error_code, msg, name);
-      YuiErrorMsg(errorbuf);
-      abort();
+      YGLDEBUG("GLErrorLayer:ERROR:%04x'%s' %s\n", error_code, msg, name);
+	  abort();
       error_code = glGetError();
     } while (error_code != GL_NO_ERROR);
     return  false;
@@ -1336,3115 +1297,1315 @@ public:
 
   template<typename T>
   T Add(T a, T b) {
-    return a + b;
+	  return a + b;
   }
 
 
-  //#define COMPILE_COLOR_DOT( BASE, COLOR , DOT ) ({ GLuint PRG; BASE[sizeof(BASE)/sizeof(char*) - 2] = COLOR; BASE[sizeof(BASE)/sizeof(char*) - 1] = DOT; PRG=createProgram(sizeof(BASE)/sizeof(char*), (const GLchar**)BASE);}) 
+//#define COMPILE_COLOR_DOT( BASE, COLOR , DOT ) ({ GLuint PRG; BASE[sizeof(BASE)/sizeof(char*) - 2] = COLOR; BASE[sizeof(BASE)/sizeof(char*) - 1] = DOT; PRG=createProgram(sizeof(BASE)/sizeof(char*), (const GLchar**)BASE);}) 
 
 #define COMPILE_COLOR_DOT( BASE, COLOR , DOT )
 #define S(A) A, sizeof(A)/sizeof(char*)
 
-  GLuint compile_color_dot(const char * base[], int size, const char * color, const char * dot) {
-    base[size - 2] = color;
-    base[size - 1] = dot;
-    return createProgram(size, (const GLchar**)base);
+  GLuint compile_color_dot( const char * base[], int size, const char * color, const char * dot) {
+	  base[size - 2] = color;
+	  base[size - 1] = dot;
+	  return createProgram(size, (const GLchar**)base);
   }
 
   //-----------------------------------------------
-  void update(RBGDrawInfo * rbg) {
+  void update( RBGDrawInfo * rbg) {
     GLuint error;
+    int local_size_x = 4;
+    int local_size_y = 4;
 
     int work_groups_x = 1 + (tex_width_ - 1) / local_size_x;
     int work_groups_y = 1 + (tex_height_ - 1) / local_size_y;
 
     error = glGetError();
-    // Line color insersion
-    if (rbg->info.LineColorBase != 0 && VDP2_CC_NONE != (rbg->info.blendmode & 0x03)) {
-      if (fixVdp2Regs->RPMD == 0 || (fixVdp2Regs->RPMD == 3 && (fixVdp2Regs->WCTLD & 0xA) == 0)) {
-        if (rbg->info.isbitmap) {
-          if (prg_rbg_0_2w_bitmap_8bpp_line_ == 0) {
-            prg_rbg_0_2w_bitmap_8bpp_line_ = compile_color_dot(
+	// Line color insersion
+	if (rbg->info.LineColorBase != 0 && VDP2_CC_NONE != (rbg->info.blendmode & 0x03)) {
+		if (fixVdp2Regs->RPMD == 0 || (fixVdp2Regs->RPMD == 3 && (fixVdp2Regs->WCTLD & 0xA) == 0)) {
+			if (rbg->info.isbitmap) {
+        if (prg_rbg_0_2w_bitmap_8bpp_line_ == 0) {
+          prg_rbg_0_2w_bitmap_8bpp_line_ = compile_color_dot(
+            S(a_prg_rbg_0_2w_bitmap),
+            prg_rbg_getcolor_8bpp,
+            prg_generate_rbg_line_end);
+        }
+				glUseProgram(prg_rbg_0_2w_bitmap_8bpp_line_);
+			}
+			else {
+				if (rbg->info.patterndatasize == 1) {
+					switch (rbg->info.colornumber) {
+					case 0: { // Decathalete ToDo: Line Color Bug
+            if (prg_rbg_0_2w_p1_4bpp_line_ == 0) {
+              prg_rbg_0_2w_p1_4bpp_line_ = compile_color_dot(
+                S(a_prg_rbg_0_2w_p1_4bpp),
+                prg_rbg_getcolor_4bpp,
+                prg_generate_rbg_line_end);
+            }
+						glUseProgram(prg_rbg_0_2w_p1_4bpp_line_);
+						break;
+					}
+					case 1: { // Sakatuku 2 Ground, GUNDAM Side Story 2, SonicR ToDo: 2Player
+            if (prg_rbg_0_2w_p1_8bpp_line_ == 0) {
+              prg_rbg_0_2w_p1_8bpp_line_ = compile_color_dot(
+                S(a_prg_rbg_0_2w_p1_8bpp),
+                prg_rbg_getcolor_8bpp,
+                prg_generate_rbg_line_end);
+            }
+						glUseProgram(prg_rbg_0_2w_p1_8bpp_line_);
+						break;
+					}
+					case 2: {
+						if (prg_rbg_0_2w_p1_16bpp_p_line_ == 0) {
+							prg_rbg_0_2w_p1_16bpp_p_line_ = compile_color_dot(
+								S(a_prg_rbg_0_2w_p1_4bpp),
+								prg_rbg_getcolor_16bpp_palette,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_0_2w_p1_16bpp_p_line_);
+						break;
+					}
+					case 3: {
+						if (prg_rbg_0_2w_p1_16bpp_line_ == 0) {
+							prg_rbg_0_2w_p1_16bpp_line_ = compile_color_dot(
+								S(a_prg_rbg_0_2w_p1_4bpp),
+								prg_rbg_getcolor_16bpp_rbg,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_0_2w_p1_16bpp_line_);
+						break;
+					}
+					case 4: {
+						if (prg_rbg_0_2w_p1_32bpp_line_ == 0) {
+							prg_rbg_0_2w_p1_32bpp_line_ = compile_color_dot(
+								S(a_prg_rbg_0_2w_p1_4bpp),
+								prg_rbg_getcolor_32bpp_rbg,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_0_2w_p1_32bpp_line_);
+						break;
+					}
+					}
+				}
+				else {
+					switch (rbg->info.colornumber) {
+					case 0: {
+            if (prg_rbg_0_2w_p2_4bpp_line_ == 0) {
+              prg_rbg_0_2w_p2_4bpp_line_ = compile_color_dot(
+                S(a_prg_rbg_0_2w_p2_4bpp),
+                prg_rbg_getcolor_4bpp,
+                prg_generate_rbg_line_end);
+            }
+						glUseProgram(prg_rbg_0_2w_p2_4bpp_line_);
+						break;
+					}
+					case 1: { // Thunder Force V
+            if (prg_rbg_0_2w_p2_8bpp_line_ == 0) {
+              prg_rbg_0_2w_p2_8bpp_line_ = compile_color_dot(
+                S(a_prg_rbg_0_2w_p2_8bpp),
+                prg_rbg_getcolor_8bpp,
+                prg_generate_rbg_line_end);
+            }
+						glUseProgram(prg_rbg_0_2w_p2_8bpp_line_);
+						break;
+					}
+					case 2: {
+						if (prg_rbg_0_2w_p2_16bpp_p_line_ == 0) {
+							prg_rbg_0_2w_p2_16bpp_p_line_ = compile_color_dot(
+								S(a_prg_rbg_0_2w_p2_4bpp),
+								prg_rbg_getcolor_16bpp_palette,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_0_2w_p2_16bpp_p_line_);
+						break;
+					}
+					case 3: {
+						if (prg_rbg_0_2w_p2_16bpp_line_ == 0) {
+							prg_rbg_0_2w_p2_16bpp_line_ = compile_color_dot(
+								S(a_prg_rbg_0_2w_p2_4bpp),
+								prg_rbg_getcolor_16bpp_rbg,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_0_2w_p2_16bpp_line_);
+						break;
+					}
+					case 4: {
+						if (prg_rbg_0_2w_p2_32bpp_line_ == 0) {
+							prg_rbg_0_2w_p2_32bpp_line_ = compile_color_dot(
+								S(a_prg_rbg_0_2w_p2_4bpp),
+								prg_rbg_getcolor_32bpp_rbg,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_0_2w_p2_32bpp_line_);
+						break;
+					}
+					}
+				}
+			}
+		}
+		else if (fixVdp2Regs->RPMD == 1) {
+			if (rbg->info.isbitmap) {
+        if (prg_rbg_1_2w_bitmap_8bpp_line_ == 0) {
+          prg_rbg_1_2w_bitmap_8bpp_line_ = compile_color_dot(
+            S(a_prg_rbg_1_2w_bitmap),
+            prg_rbg_getcolor_8bpp,
+            prg_generate_rbg_line_end);
+        }
+				glUseProgram(prg_rbg_1_2w_bitmap_8bpp_line_);
+			}
+			else {
+				if (rbg->info.patterndatasize == 1) {
+					switch (rbg->info.colornumber) {
+					case 0: {
+            if (prg_rbg_1_2w_p1_4bpp_line_ == 0) {
+              prg_rbg_1_2w_p1_4bpp_line_ = compile_color_dot(
+                S(a_prg_rbg_1_2w_p1_4bpp),
+                prg_rbg_getcolor_4bpp,
+                prg_generate_rbg_line_end);
+            }
+						glUseProgram(prg_rbg_1_2w_p1_4bpp_line_);
+						break;
+					}
+					case 1: {
+            if (prg_rbg_1_2w_p1_8bpp_line_ == 0) {
+              prg_rbg_1_2w_p1_8bpp_line_ = compile_color_dot(
+                S(a_prg_rbg_1_2w_p1_8bpp),
+                prg_rbg_getcolor_8bpp,
+                prg_generate_rbg_line_end);
+            }
+						glUseProgram(prg_rbg_1_2w_p1_8bpp_line_);
+						break;
+					}
+					case 2: {
+						if (prg_rbg_1_2w_p1_16bpp_p_line_ == 0) {
+							prg_rbg_1_2w_p1_16bpp_p_line_ = compile_color_dot(
+								S(a_prg_rbg_1_2w_p1_4bpp),
+								prg_rbg_getcolor_16bpp_palette,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_1_2w_p1_16bpp_p_line_);
+						break;
+					}
+					case 3: {
+						if (prg_rbg_1_2w_p1_16bpp_line_ == 0) {
+							prg_rbg_1_2w_p1_16bpp_line_ = compile_color_dot(
+								S(a_prg_rbg_1_2w_p1_4bpp),
+								prg_rbg_getcolor_16bpp_rbg,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_1_2w_p1_16bpp_line_);
+						break;
+					}
+					case 4: {
+						if (prg_rbg_1_2w_p1_32bpp_line_ == 0) {
+							prg_rbg_1_2w_p1_32bpp_line_ = compile_color_dot(
+								S(a_prg_rbg_0_2w_p1_4bpp),
+								prg_rbg_getcolor_32bpp_rbg,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_1_2w_p1_32bpp_line_);
+						break;
+					}
+					}
+				}
+				else {
+					switch (rbg->info.colornumber) {
+					case 0: {
+            if (prg_rbg_1_2w_p2_4bpp_line_ == 0) {
+              prg_rbg_1_2w_p2_4bpp_line_ = compile_color_dot(
+                S(a_prg_rbg_1_2w_p2_4bpp),
+                prg_rbg_getcolor_4bpp,
+                prg_generate_rbg_line_end);
+            }
+						glUseProgram(prg_rbg_1_2w_p2_4bpp_line_);
+						break;
+					}
+					case 1: {
+            if (prg_rbg_1_2w_p2_8bpp_line_ == 0) {
+              prg_rbg_1_2w_p2_8bpp_line_ = compile_color_dot(
+                S(a_prg_rbg_1_2w_p2_8bpp),
+                prg_rbg_getcolor_8bpp,
+                prg_generate_rbg_line_end);
+            }
+						glUseProgram(prg_rbg_1_2w_p2_8bpp_line_);
+						break;
+					}
+					case 2: {
+						if (prg_rbg_1_2w_p2_16bpp_p_line_ == 0) {
+							prg_rbg_1_2w_p2_16bpp_p_line_ = compile_color_dot(
+								S(a_prg_rbg_1_2w_p2_4bpp),
+								prg_rbg_getcolor_16bpp_palette,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_1_2w_p2_16bpp_p_line_);
+						break;
+					}
+					case 3: {
+						if (prg_rbg_1_2w_p2_16bpp_line_ == 0) {
+							prg_rbg_1_2w_p2_16bpp_line_ = compile_color_dot(
+								S(a_prg_rbg_1_2w_p2_4bpp),
+								prg_rbg_getcolor_16bpp_rbg,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_1_2w_p2_16bpp_line_);
+						break;
+					}
+					case 4: {
+						if (prg_rbg_1_2w_p2_32bpp_line_ == 0) {
+							prg_rbg_1_2w_p2_32bpp_line_ = compile_color_dot(
+								S(a_prg_rbg_1_2w_p2_4bpp),
+								prg_rbg_getcolor_32bpp_rbg,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_1_2w_p2_32bpp_line_);
+						break;
+					}
+					}
+				}
+			}
+		}
+		else if (fixVdp2Regs->RPMD == 2) {
+			if (rbg->info.isbitmap) {
+        if (prg_rbg_2_2w_bitmap_8bpp_line_ == 0) {
+          prg_rbg_2_2w_bitmap_8bpp_line_ = compile_color_dot(
+            S(a_prg_rbg_2_2w_bitmap),
+            prg_rbg_getcolor_8bpp,
+            prg_generate_rbg_line_end);
+        }
+				glUseProgram(prg_rbg_2_2w_bitmap_8bpp_line_);
+			}
+			else {
+				if (rbg->info.patterndatasize == 1) {
+					switch (rbg->info.colornumber) {
+					case 0: {
+            if (prg_rbg_2_2w_p1_4bpp_line_ == 0) {
+              prg_rbg_2_2w_p1_4bpp_line_ = compile_color_dot(
+                S(a_prg_rbg_2_2w_p1_4bpp),
+                prg_rbg_getcolor_4bpp,
+                prg_generate_rbg_line_end);
+            }
+						glUseProgram(prg_rbg_2_2w_p1_4bpp_line_);
+						break;
+					}
+					case 1: { // Panzer Dragoon 1
+            if (prg_rbg_2_2w_p1_8bpp_line_ == 0) {
+              prg_rbg_2_2w_p1_8bpp_line_ = compile_color_dot(
+                S(a_prg_rbg_2_2w_p1_8bpp),
+                prg_rbg_getcolor_8bpp,
+                prg_generate_rbg_line_end);
+            }
+						glUseProgram(prg_rbg_2_2w_p1_8bpp_line_);
+						break;
+					}
+					case 2: {
+						if (prg_rbg_2_2w_p1_16bpp_p_line_ == 0) {
+							prg_rbg_2_2w_p1_16bpp_p_line_ = compile_color_dot(
+								S(a_prg_rbg_2_2w_p1_4bpp),
+								prg_rbg_getcolor_16bpp_palette,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_2_2w_p1_16bpp_p_line_);
+						break;
+					}
+					case 3: {
+						if (prg_rbg_2_2w_p1_16bpp_line_ == 0) {
+							prg_rbg_2_2w_p1_16bpp_line_ = compile_color_dot(
+								S(a_prg_rbg_2_2w_p1_4bpp),
+								prg_rbg_getcolor_16bpp_rbg,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_2_2w_p1_16bpp_line_);
+						break;
+					}
+					case 4: {
+						if (prg_rbg_2_2w_p1_32bpp_line_ == 0) {
+							prg_rbg_2_2w_p1_32bpp_line_ = compile_color_dot(
+								S(a_prg_rbg_2_2w_p1_4bpp),
+								prg_rbg_getcolor_32bpp_rbg,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_2_2w_p1_32bpp_line_);
+						break;
+					}
+					}
+				}
+				else {
+					switch (rbg->info.colornumber) {
+					case 0: {
+            if (prg_rbg_2_2w_p2_4bpp_line_ == 0) {
+              prg_rbg_2_2w_p2_4bpp_line_ = compile_color_dot(
+                S(a_prg_rbg_2_2w_p2_4bpp),
+                prg_rbg_getcolor_4bpp,
+                prg_generate_rbg_line_end);
+            }
+						glUseProgram(prg_rbg_2_2w_p2_4bpp_line_);
+						break;
+					}
+					case 1: {
+            if (prg_rbg_2_2w_p2_8bpp_line_ == 0) {
+              prg_rbg_2_2w_p2_8bpp_line_ = compile_color_dot(
+                S(a_prg_rbg_2_2w_p2_8bpp),
+                prg_rbg_getcolor_8bpp,
+                prg_generate_rbg_line_end);
+            }
+						glUseProgram(prg_rbg_2_2w_p2_8bpp_line_);
+						break;
+					}
+					case 2: {
+						if (prg_rbg_2_2w_p2_16bpp_p_line_ == 0) {
+							prg_rbg_2_2w_p2_16bpp_p_line_ = compile_color_dot(
+								S(a_prg_rbg_2_2w_p2_4bpp),
+								prg_rbg_getcolor_16bpp_palette,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_2_2w_p2_16bpp_p_line_);
+						break;
+					}
+					case 3: {
+						if (prg_rbg_2_2w_p2_16bpp_line_ == 0) {
+							prg_rbg_2_2w_p2_16bpp_line_ = compile_color_dot(
+								S(a_prg_rbg_2_2w_p2_4bpp),
+								prg_rbg_getcolor_16bpp_rbg,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_2_2w_p2_16bpp_line_);
+						break;
+					}
+					case 4: {
+						if (prg_rbg_2_2w_p2_32bpp_line_ == 0) {
+							prg_rbg_2_2w_p2_32bpp_line_ = compile_color_dot(
+								S(a_prg_rbg_2_2w_p2_4bpp),
+								prg_rbg_getcolor_32bpp_rbg,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_2_2w_p2_32bpp_line_);
+						break;
+					}
+					}
+				}
+			}
+		}
+		else if (fixVdp2Regs->RPMD == 3) {
+
+			if (rbg->info.isbitmap) {
+        if (prg_rbg_3_2w_bitmap_8bpp_line_ == 0) {
+          prg_rbg_3_2w_bitmap_8bpp_line_ = compile_color_dot(
+            S(a_prg_rbg_3_2w_bitmap),
+            prg_rbg_getcolor_8bpp,
+            prg_generate_rbg_line_end);
+        }
+				glUseProgram(prg_rbg_3_2w_bitmap_8bpp_line_);
+			}
+			else {
+				if (rbg->info.patterndatasize == 1) {
+					switch (rbg->info.colornumber) {
+					case 0: {
+            if (prg_rbg_3_2w_p1_4bpp_line_==0) {
+              prg_rbg_3_2w_p1_4bpp_line_ = compile_color_dot(
+                S(a_prg_rbg_3_2w_p1_4bpp),
+                prg_rbg_getcolor_4bpp,
+                prg_generate_rbg_line_end);
+            }
+						glUseProgram(prg_rbg_3_2w_p1_4bpp_line_);
+						break;
+					}
+					case 1: {
+            if (prg_rbg_3_2w_p1_8bpp_line_==0) {
+              prg_rbg_3_2w_p1_8bpp_line_ = compile_color_dot(
+                S(a_prg_rbg_3_2w_p1_8bpp),
+                prg_rbg_getcolor_8bpp,
+                prg_generate_rbg_line_end);
+            }
+						glUseProgram(prg_rbg_3_2w_p1_8bpp_line_);
+						break;
+					}
+					case 2: {
+						if (prg_rbg_3_2w_p1_16bpp_p_line_ == 0) {
+							prg_rbg_3_2w_p1_16bpp_p_line_ = compile_color_dot(
+								S(a_prg_rbg_3_2w_p1_4bpp),
+								prg_rbg_getcolor_16bpp_palette,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_3_2w_p1_16bpp_p_line_);
+						break;
+					}
+					case 3: {
+						if (prg_rbg_3_2w_p1_16bpp_line_ == 0) {
+							prg_rbg_3_2w_p1_16bpp_line_ = compile_color_dot(
+								S(a_prg_rbg_3_2w_p1_4bpp),
+								prg_rbg_getcolor_16bpp_rbg,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_3_2w_p1_16bpp_line_);
+						break;
+					}
+					case 4: {
+						if (prg_rbg_3_2w_p1_32bpp_line_ == 0) {
+							prg_rbg_3_2w_p1_32bpp_line_ = compile_color_dot(
+								S(a_prg_rbg_3_2w_p1_4bpp),
+								prg_rbg_getcolor_32bpp_rbg,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_3_2w_p1_32bpp_line_);
+						break;
+					}
+					}
+				}
+				else {
+					switch (rbg->info.colornumber) {
+					case 0: {
+            if (prg_rbg_3_2w_p2_4bpp_line_ == 0) {
+              prg_rbg_3_2w_p2_4bpp_line_ = compile_color_dot(
+                S(a_prg_rbg_3_2w_p2_4bpp),
+                prg_rbg_getcolor_4bpp,
+                prg_generate_rbg_line_end);
+            }
+						glUseProgram(prg_rbg_3_2w_p2_4bpp_line_);
+						break;
+					}
+					case 1: {
+            if (prg_rbg_3_2w_p2_8bpp_line_ == 0) {
+              prg_rbg_3_2w_p2_8bpp_line_ = compile_color_dot(
+                S(a_prg_rbg_3_2w_p2_8bpp),
+                prg_rbg_getcolor_8bpp,
+                prg_generate_rbg_line_end);
+            }
+						glUseProgram(prg_rbg_3_2w_p2_8bpp_line_);
+						break;
+					}
+					case 2: {
+						if (prg_rbg_3_2w_p2_16bpp_p_line_ == 0) {
+							prg_rbg_3_2w_p2_16bpp_p_line_ = compile_color_dot(
+								S(a_prg_rbg_3_2w_p2_4bpp),
+								prg_rbg_getcolor_16bpp_palette,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_3_2w_p2_16bpp_p_line_);
+						break;
+					}
+					case 3: {
+						if (prg_rbg_3_2w_p2_16bpp_line_ == 0) {
+							prg_rbg_3_2w_p2_16bpp_line_ = compile_color_dot(
+								S(a_prg_rbg_3_2w_p2_4bpp),
+								prg_rbg_getcolor_16bpp_rbg,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_3_2w_p2_16bpp_line_);
+						break;
+					}
+					case 4: {
+						if (prg_rbg_3_2w_p2_32bpp_line_ == 0) {
+							prg_rbg_3_2w_p2_32bpp_line_ = compile_color_dot(
+								S(a_prg_rbg_3_2w_p2_4bpp),
+								prg_rbg_getcolor_32bpp_rbg,
+								prg_generate_rbg_line_end);
+						}
+						glUseProgram(prg_rbg_3_2w_p2_32bpp_line_);
+						break;
+					}
+					}
+				}
+			}
+			glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_window_);
+			glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(vdp2WindowInfo)*(int(rbg->vres / rbg->rotate_mval_v)<<rbg->info.hres_shift) , (void*)rbg->info.pWinInfo);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, ssbo_window_);
+		}
+
+	}
+
+	// no line color insersion
+	else {
+		if ( rbg->rgb_type == 0 && (fixVdp2Regs->RPMD == 0 || (fixVdp2Regs->RPMD == 3 && (fixVdp2Regs->WCTLD & 0xA) == 0)) ) {
+			if (rbg->info.isbitmap) {
+				switch (rbg->info.colornumber) {
+				case 0: {
+					if (prg_rbg_0_2w_bitmap_4bpp_ == 0) {
+						prg_rbg_0_2w_bitmap_4bpp_ = compile_color_dot(
+							S(a_prg_rbg_0_2w_bitmap),
+							prg_rbg_getcolor_4bpp,
+							prg_generate_rbg_end);
+					}
+					glUseProgram(prg_rbg_0_2w_bitmap_4bpp_);
+					break;
+				}
+				case 1: { // SF3S1( Initial )
+          if (prg_rbg_0_2w_bitmap_8bpp_ == 0) {
+            prg_rbg_0_2w_bitmap_8bpp_ = compile_color_dot(
               S(a_prg_rbg_0_2w_bitmap),
               prg_rbg_getcolor_8bpp,
-              prg_generate_rbg_line_end);
+              prg_generate_rbg_end);
           }
-          glUseProgram(prg_rbg_0_2w_bitmap_8bpp_line_);
-        }
-        else {
-          if (rbg->info.patterndatasize == 1) {
-            switch (rbg->info.colornumber) {
-            case 0: { // Decathalete ToDo: Line Color Bug
-              if (prg_rbg_0_2w_p1_4bpp_line_ == 0) {
-                prg_rbg_0_2w_p1_4bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p1_4bpp),
-                  prg_rbg_getcolor_4bpp,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_0_2w_p1_4bpp_line_);
-              break;
-            }
-            case 1: { // Sakatuku 2 Ground, GUNDAM Side Story 2, SonicR ToDo: 2Player
-              if (prg_rbg_0_2w_p1_8bpp_line_ == 0) {
-                prg_rbg_0_2w_p1_8bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p1_8bpp),
-                  prg_rbg_getcolor_8bpp,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_0_2w_p1_8bpp_line_);
-              break;
-            }
-            case 2: {
-              if (prg_rbg_0_2w_p1_16bpp_p_line_ == 0) {
-                prg_rbg_0_2w_p1_16bpp_p_line_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p1_4bpp),
-                  prg_rbg_getcolor_16bpp_palette,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_0_2w_p1_16bpp_p_line_);
-              break;
-            }
-            case 3: {
-              if (prg_rbg_0_2w_p1_16bpp_line_ == 0) {
-                prg_rbg_0_2w_p1_16bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p1_4bpp),
-                  prg_rbg_getcolor_16bpp_rbg,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_0_2w_p1_16bpp_line_);
-              break;
-            }
-            case 4: {
-              if (prg_rbg_0_2w_p1_32bpp_line_ == 0) {
-                prg_rbg_0_2w_p1_32bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p1_4bpp),
-                  prg_rbg_getcolor_32bpp_rbg,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_0_2w_p1_32bpp_line_);
-              break;
-            }
-            }
-          }
-          else {
-            switch (rbg->info.colornumber) {
-            case 0: {
-              if (prg_rbg_0_2w_p2_4bpp_line_ == 0) {
-                prg_rbg_0_2w_p2_4bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p2_4bpp),
-                  prg_rbg_getcolor_4bpp,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_0_2w_p2_4bpp_line_);
-              break;
-            }
-            case 1: { // Thunder Force V
-              if (prg_rbg_0_2w_p2_8bpp_line_ == 0) {
-                prg_rbg_0_2w_p2_8bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p2_8bpp),
-                  prg_rbg_getcolor_8bpp,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_0_2w_p2_8bpp_line_);
-              break;
-            }
-            case 2: {
-              if (prg_rbg_0_2w_p2_16bpp_p_line_ == 0) {
-                prg_rbg_0_2w_p2_16bpp_p_line_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p2_4bpp),
-                  prg_rbg_getcolor_16bpp_palette,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_0_2w_p2_16bpp_p_line_);
-              break;
-            }
-            case 3: {
-              if (prg_rbg_0_2w_p2_16bpp_line_ == 0) {
-                prg_rbg_0_2w_p2_16bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p2_4bpp),
-                  prg_rbg_getcolor_16bpp_rbg,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_0_2w_p2_16bpp_line_);
-              break;
-            }
-            case 4: {
-              if (prg_rbg_0_2w_p2_32bpp_line_ == 0) {
-                prg_rbg_0_2w_p2_32bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p2_4bpp),
-                  prg_rbg_getcolor_32bpp_rbg,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_0_2w_p2_32bpp_line_);
-              break;
-            }
-            }
-          }
-        }
-      }
-      else if (fixVdp2Regs->RPMD == 1) {
-        if (rbg->info.isbitmap) {
-          if (prg_rbg_1_2w_bitmap_8bpp_line_ == 0) {
-            prg_rbg_1_2w_bitmap_8bpp_line_ = compile_color_dot(
-              S(a_prg_rbg_1_2w_bitmap),
-              prg_rbg_getcolor_8bpp,
-              prg_generate_rbg_line_end);
-          }
-          glUseProgram(prg_rbg_1_2w_bitmap_8bpp_line_);
-        }
-        else {
-          if (rbg->info.patterndatasize == 1) {
-            switch (rbg->info.colornumber) {
-            case 0: {
-              if (prg_rbg_1_2w_p1_4bpp_line_ == 0) {
-                prg_rbg_1_2w_p1_4bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_1_2w_p1_4bpp),
-                  prg_rbg_getcolor_4bpp,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p1_4bpp_line_);
-              break;
-            }
-            case 1: {
-              if (prg_rbg_1_2w_p1_8bpp_line_ == 0) {
-                prg_rbg_1_2w_p1_8bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_1_2w_p1_8bpp),
-                  prg_rbg_getcolor_8bpp,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p1_8bpp_line_);
-              break;
-            }
-            case 2: {
-              if (prg_rbg_1_2w_p1_16bpp_p_line_ == 0) {
-                prg_rbg_1_2w_p1_16bpp_p_line_ = compile_color_dot(
-                  S(a_prg_rbg_1_2w_p1_4bpp),
-                  prg_rbg_getcolor_16bpp_palette,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p1_16bpp_p_line_);
-              break;
-            }
-            case 3: {
-              if (prg_rbg_1_2w_p1_16bpp_line_ == 0) {
-                prg_rbg_1_2w_p1_16bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_1_2w_p1_4bpp),
-                  prg_rbg_getcolor_16bpp_rbg,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p1_16bpp_line_);
-              break;
-            }
-            case 4: {
-              if (prg_rbg_1_2w_p1_32bpp_line_ == 0) {
-                prg_rbg_1_2w_p1_32bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p1_4bpp),
-                  prg_rbg_getcolor_32bpp_rbg,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p1_32bpp_line_);
-              break;
-            }
-            }
-          }
-          else {
-            switch (rbg->info.colornumber) {
-            case 0: {
-              if (prg_rbg_1_2w_p2_4bpp_line_ == 0) {
-                prg_rbg_1_2w_p2_4bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_1_2w_p2_4bpp),
-                  prg_rbg_getcolor_4bpp,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p2_4bpp_line_);
-              break;
-            }
-            case 1: {
-              if (prg_rbg_1_2w_p2_8bpp_line_ == 0) {
-                prg_rbg_1_2w_p2_8bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_1_2w_p2_8bpp),
-                  prg_rbg_getcolor_8bpp,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p2_8bpp_line_);
-              break;
-            }
-            case 2: {
-              if (prg_rbg_1_2w_p2_16bpp_p_line_ == 0) {
-                prg_rbg_1_2w_p2_16bpp_p_line_ = compile_color_dot(
-                  S(a_prg_rbg_1_2w_p2_4bpp),
-                  prg_rbg_getcolor_16bpp_palette,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p2_16bpp_p_line_);
-              break;
-            }
-            case 3: {
-              if (prg_rbg_1_2w_p2_16bpp_line_ == 0) {
-                prg_rbg_1_2w_p2_16bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_1_2w_p2_4bpp),
-                  prg_rbg_getcolor_16bpp_rbg,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p2_16bpp_line_);
-              break;
-            }
-            case 4: {
-              if (prg_rbg_1_2w_p2_32bpp_line_ == 0) {
-                prg_rbg_1_2w_p2_32bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_1_2w_p2_4bpp),
-                  prg_rbg_getcolor_32bpp_rbg,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p2_32bpp_line_);
-              break;
-            }
-            }
-          }
-        }
-      }
-      else if (fixVdp2Regs->RPMD == 2) {
-        if (rbg->info.isbitmap) {
-          if (prg_rbg_2_2w_bitmap_8bpp_line_ == 0) {
-            prg_rbg_2_2w_bitmap_8bpp_line_ = compile_color_dot(
-              S(a_prg_rbg_2_2w_bitmap),
-              prg_rbg_getcolor_8bpp,
-              prg_generate_rbg_line_end);
-          }
-          glUseProgram(prg_rbg_2_2w_bitmap_8bpp_line_);
-        }
-        else {
-          if (rbg->info.patterndatasize == 1) {
-            switch (rbg->info.colornumber) {
-            case 0: {
-              if (prg_rbg_2_2w_p1_4bpp_line_ == 0) {
-                prg_rbg_2_2w_p1_4bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p1_4bpp),
-                  prg_rbg_getcolor_4bpp,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p1_4bpp_line_);
-              break;
-            }
-            case 1: { // Panzer Dragoon 1
-              if (prg_rbg_2_2w_p1_8bpp_line_ == 0) {
-                prg_rbg_2_2w_p1_8bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p1_8bpp),
-                  prg_rbg_getcolor_8bpp,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p1_8bpp_line_);
-              break;
-            }
-            case 2: {
-              if (prg_rbg_2_2w_p1_16bpp_p_line_ == 0) {
-                prg_rbg_2_2w_p1_16bpp_p_line_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p1_4bpp),
-                  prg_rbg_getcolor_16bpp_palette,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p1_16bpp_p_line_);
-              break;
-            }
-            case 3: {
-              if (prg_rbg_2_2w_p1_16bpp_line_ == 0) {
-                prg_rbg_2_2w_p1_16bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p1_4bpp),
-                  prg_rbg_getcolor_16bpp_rbg,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p1_16bpp_line_);
-              break;
-            }
-            case 4: {
-              if (prg_rbg_2_2w_p1_32bpp_line_ == 0) {
-                prg_rbg_2_2w_p1_32bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p1_4bpp),
-                  prg_rbg_getcolor_32bpp_rbg,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p1_32bpp_line_);
-              break;
-            }
-            }
-          }
-          else {
-            switch (rbg->info.colornumber) {
-            case 0: {
-              if (prg_rbg_2_2w_p2_4bpp_line_ == 0) {
-                prg_rbg_2_2w_p2_4bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p2_4bpp),
-                  prg_rbg_getcolor_4bpp,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p2_4bpp_line_);
-              break;
-            }
-            case 1: {
-              if (prg_rbg_2_2w_p2_8bpp_line_ == 0) {
-                prg_rbg_2_2w_p2_8bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p2_8bpp),
-                  prg_rbg_getcolor_8bpp,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p2_8bpp_line_);
-              break;
-            }
-            case 2: {
-              if (prg_rbg_2_2w_p2_16bpp_p_line_ == 0) {
-                prg_rbg_2_2w_p2_16bpp_p_line_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p2_4bpp),
-                  prg_rbg_getcolor_16bpp_palette,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p2_16bpp_p_line_);
-              break;
-            }
-            case 3: {
-              if (prg_rbg_2_2w_p2_16bpp_line_ == 0) {
-                prg_rbg_2_2w_p2_16bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p2_4bpp),
-                  prg_rbg_getcolor_16bpp_rbg,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p2_16bpp_line_);
-              break;
-            }
-            case 4: {
-              if (prg_rbg_2_2w_p2_32bpp_line_ == 0) {
-                prg_rbg_2_2w_p2_32bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p2_4bpp),
-                  prg_rbg_getcolor_32bpp_rbg,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p2_32bpp_line_);
-              break;
-            }
-            }
-          }
-        }
-      }
-      else if (fixVdp2Regs->RPMD == 3) {
-
-        if (rbg->info.isbitmap) {
-          if (prg_rbg_3_2w_bitmap_8bpp_line_ == 0) {
-            prg_rbg_3_2w_bitmap_8bpp_line_ = compile_color_dot(
-              S(a_prg_rbg_3_2w_bitmap),
-              prg_rbg_getcolor_8bpp,
-              prg_generate_rbg_line_end);
-          }
-          glUseProgram(prg_rbg_3_2w_bitmap_8bpp_line_);
-        }
-        else {
-          if (rbg->info.patterndatasize == 1) {
-            switch (rbg->info.colornumber) {
-            case 0: {
-              if (prg_rbg_3_2w_p1_4bpp_line_ == 0) {
-                prg_rbg_3_2w_p1_4bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p1_4bpp),
-                  prg_rbg_getcolor_4bpp,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p1_4bpp_line_);
-              break;
-            }
-            case 1: {
-              if (prg_rbg_3_2w_p1_8bpp_line_ == 0) {
-                prg_rbg_3_2w_p1_8bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p1_8bpp),
-                  prg_rbg_getcolor_8bpp,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p1_8bpp_line_);
-              break;
-            }
-            case 2: {
-              if (prg_rbg_3_2w_p1_16bpp_p_line_ == 0) {
-                prg_rbg_3_2w_p1_16bpp_p_line_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p1_4bpp),
-                  prg_rbg_getcolor_16bpp_palette,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p1_16bpp_p_line_);
-              break;
-            }
-            case 3: {
-              if (prg_rbg_3_2w_p1_16bpp_line_ == 0) {
-                prg_rbg_3_2w_p1_16bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p1_4bpp),
-                  prg_rbg_getcolor_16bpp_rbg,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p1_16bpp_line_);
-              break;
-            }
-            case 4: {
-              if (prg_rbg_3_2w_p1_32bpp_line_ == 0) {
-                prg_rbg_3_2w_p1_32bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p1_4bpp),
-                  prg_rbg_getcolor_32bpp_rbg,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p1_32bpp_line_);
-              break;
-            }
-            }
-          }
-          else {
-            switch (rbg->info.colornumber) {
-            case 0: {
-              if (prg_rbg_3_2w_p2_4bpp_line_ == 0) {
-                prg_rbg_3_2w_p2_4bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p2_4bpp),
-                  prg_rbg_getcolor_4bpp,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p2_4bpp_line_);
-              break;
-            }
-            case 1: {
-              if (prg_rbg_3_2w_p2_8bpp_line_ == 0) {
-                prg_rbg_3_2w_p2_8bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p2_8bpp),
-                  prg_rbg_getcolor_8bpp,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p2_8bpp_line_);
-              break;
-            }
-            case 2: {
-              if (prg_rbg_3_2w_p2_16bpp_p_line_ == 0) {
-                prg_rbg_3_2w_p2_16bpp_p_line_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p2_4bpp),
-                  prg_rbg_getcolor_16bpp_palette,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p2_16bpp_p_line_);
-              break;
-            }
-            case 3: {
-              if (prg_rbg_3_2w_p2_16bpp_line_ == 0) {
-                prg_rbg_3_2w_p2_16bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p2_4bpp),
-                  prg_rbg_getcolor_16bpp_rbg,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p2_16bpp_line_);
-              break;
-            }
-            case 4: {
-              if (prg_rbg_3_2w_p2_32bpp_line_ == 0) {
-                prg_rbg_3_2w_p2_32bpp_line_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p2_4bpp),
-                  prg_rbg_getcolor_32bpp_rbg,
-                  prg_generate_rbg_line_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p2_32bpp_line_);
-              break;
-            }
-            }
-          }
-        }
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_window_);
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(vdp2WindowInfo)*(int(rbg->vres / rbg->rotate_mval_v) << rbg->info.hres_shift), (void*)rbg->info.pWinInfo);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, ssbo_window_);
-      }
-
-    }
-
-    // no line color insersion
-    else {
-      if (rbg->rgb_type == 0 && (fixVdp2Regs->RPMD == 0 || (fixVdp2Regs->RPMD == 3 && (fixVdp2Regs->WCTLD & 0xA) == 0))) {
-        if (rbg->info.isbitmap) {
-          switch (rbg->info.colornumber) {
-          case 0: {
-            if (prg_rbg_0_2w_bitmap_4bpp_ == 0) {
-              prg_rbg_0_2w_bitmap_4bpp_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_bitmap),
-                prg_rbg_getcolor_4bpp,
-                prg_generate_rbg_end);
-            }
-            glUseProgram(prg_rbg_0_2w_bitmap_4bpp_);
-            break;
-          }
-          case 1: { // SF3S1( Initial )
-            if (prg_rbg_0_2w_bitmap_8bpp_ == 0) {
-              prg_rbg_0_2w_bitmap_8bpp_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_bitmap),
-                prg_rbg_getcolor_8bpp,
-                prg_generate_rbg_end);
-            }
-            glUseProgram(prg_rbg_0_2w_bitmap_8bpp_);
-            break;
-          }
-          case 2: {
-            if (prg_rbg_0_2w_bitmap_16bpp_p_ == 0) {
-              prg_rbg_0_2w_bitmap_16bpp_p_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_bitmap),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_end);
-            }
-            glUseProgram(prg_rbg_0_2w_bitmap_16bpp_p_);
-            break;
-          }
-          case 3: { // NHL 97 Title, GRANDIA Title
-            if (prg_rbg_0_2w_bitmap_16bpp_ == 0) {
-              prg_rbg_0_2w_bitmap_16bpp_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_bitmap),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            glUseProgram(prg_rbg_0_2w_bitmap_16bpp_);
-            break;
-          }
-          case 4: {
-            if (prg_rbg_0_2w_bitmap_32bpp_ == 0) {
-              prg_rbg_0_2w_bitmap_32bpp_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_bitmap),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            glUseProgram(prg_rbg_0_2w_bitmap_32bpp_);
-            break;
-          }
-          }
-        }
-        else {
-          if (rbg->info.patterndatasize == 1) {
-            switch (rbg->info.colornumber) {
-            case 0: { // Dead or Alive, Rediant Silver Gun, Diehard
+					glUseProgram(prg_rbg_0_2w_bitmap_8bpp_);
+					break;
+				}
+				case 2: {
+					if (prg_rbg_0_2w_bitmap_16bpp_p_ == 0) {
+						prg_rbg_0_2w_bitmap_16bpp_p_ = compile_color_dot(
+							S(a_prg_rbg_0_2w_bitmap),
+							prg_rbg_getcolor_16bpp_palette,
+							prg_generate_rbg_end);
+					}
+					glUseProgram(prg_rbg_0_2w_bitmap_16bpp_p_);
+					break;
+				}
+				case 3: { // NHL 97 Title, GRANDIA Title
+					if (prg_rbg_0_2w_bitmap_16bpp_ == 0) {
+						prg_rbg_0_2w_bitmap_16bpp_ = compile_color_dot(
+							S(a_prg_rbg_0_2w_bitmap),
+							prg_rbg_getcolor_16bpp_rbg,
+							prg_generate_rbg_end);
+					}
+					glUseProgram(prg_rbg_0_2w_bitmap_16bpp_);
+					break;
+				}
+				case 4: {
+					if (prg_rbg_0_2w_bitmap_32bpp_ == 0) {
+						prg_rbg_0_2w_bitmap_32bpp_ = compile_color_dot(
+							S(a_prg_rbg_0_2w_bitmap),
+							prg_rbg_getcolor_32bpp_rbg,
+							prg_generate_rbg_end);
+					}
+					glUseProgram(prg_rbg_0_2w_bitmap_32bpp_);
+					break;
+				}
+				}
+			}
+			else {
+				if (rbg->info.patterndatasize == 1) {
+					switch (rbg->info.colornumber) {
+						case 0: { // Dead or Alive, Rediant Silver Gun, Diehard
               if (prg_rbg_0_2w_p1_4bpp_ == 0) {
                 prg_rbg_0_2w_p1_4bpp_ = compile_color_dot(
                   S(a_prg_rbg_0_2w_p1_4bpp),
                   prg_rbg_getcolor_4bpp,
                   prg_generate_rbg_end);
               }
-              glUseProgram(prg_rbg_0_2w_p1_4bpp_);
-              break;
-            }
-            case 1: { // Sakatuku 2 ( Initial Setting ), Virtua Fighter 2, Virtual-on
+							glUseProgram(prg_rbg_0_2w_p1_4bpp_);
+							break;
+						}
+						case 1: { // Sakatuku 2 ( Initial Setting ), Virtua Fighter 2, Virtual-on
               if (prg_rbg_0_2w_p1_8bpp_ == 0) {
                 prg_rbg_0_2w_p1_8bpp_ = compile_color_dot(
                   S(a_prg_rbg_0_2w_p1_8bpp),
                   prg_rbg_getcolor_8bpp,
                   prg_generate_rbg_end);
               }
-              glUseProgram(prg_rbg_0_2w_p1_8bpp_);
-              break;
-            }
-            case 2: {
-              if (prg_rbg_0_2w_p1_16bpp_p_ == 0) {
-                prg_rbg_0_2w_p1_16bpp_p_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p1_4bpp),
-                  prg_rbg_getcolor_16bpp_palette,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_0_2w_p1_16bpp_p_);
-              break;
-            }
-            case 3: {
-              if (prg_rbg_0_2w_p1_16bpp_ == 0) {
-                prg_rbg_0_2w_p1_16bpp_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p1_4bpp),
-                  prg_rbg_getcolor_16bpp_rbg,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_0_2w_p1_16bpp_);
-              break;
-            }
-            case 4: {
-              if (prg_rbg_0_2w_p1_32bpp_ == 0) {
-                prg_rbg_0_2w_p1_32bpp_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p1_4bpp),
-                  prg_rbg_getcolor_32bpp_rbg,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_0_2w_p1_32bpp_);
-              break;
-            }
-            }
-          }
-          else {
-            switch (rbg->info.colornumber) {
-            case 0: {
-              if (prg_rbg_0_2w_p2_4bpp_ == 0) {
-                prg_rbg_0_2w_p2_4bpp_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p2_4bpp),
-                  prg_rbg_getcolor_4bpp,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_0_2w_p2_4bpp_);
-              break;
-            }
-            case 1: { // NHL97(In Game), BIOS 
-              if (prg_rbg_0_2w_p2_8bpp_ == 0) {
-                prg_rbg_0_2w_p2_8bpp_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p2_8bpp),
-                  prg_rbg_getcolor_8bpp,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_0_2w_p2_8bpp_);
-              break;
-            }
-            case 2: {
-              if (prg_rbg_0_2w_p2_16bpp_p_ == 0) {
-                prg_rbg_0_2w_p2_16bpp_p_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p2_4bpp),
-                  prg_rbg_getcolor_16bpp_palette,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_0_2w_p2_16bpp_p_);
-              break;
-            }
-            case 3: {
-              if (prg_rbg_0_2w_p2_16bpp_ == 0) {
-                prg_rbg_0_2w_p2_16bpp_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p2_4bpp),
-                  prg_rbg_getcolor_16bpp_rbg,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_0_2w_p2_16bpp_);
-              break;
-            }
-            case 4: {
-              if (prg_rbg_0_2w_p2_32bpp_ == 0) {
-                prg_rbg_0_2w_p2_32bpp_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p2_4bpp),
-                  prg_rbg_getcolor_32bpp_rbg,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_0_2w_p2_32bpp_);
-              break;
-            }
-            }
-          }
-        }
-      }
-      else if ((fixVdp2Regs->RPMD == 1 && rbg->rgb_type == 0) || rbg->rgb_type == 0x04) {
-        if (rbg->info.isbitmap) {
-          switch (rbg->info.colornumber) {
-          case 0: {
-            if (prg_rbg_1_2w_bitmap_4bpp_ == 0) {
-              prg_rbg_1_2w_bitmap_4bpp_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_bitmap),
+							glUseProgram(prg_rbg_0_2w_p1_8bpp_);
+							break;
+						}
+						case 2: {
+							if (prg_rbg_0_2w_p1_16bpp_p_ == 0) {
+								prg_rbg_0_2w_p1_16bpp_p_ = compile_color_dot(
+									S(a_prg_rbg_0_2w_p1_4bpp),
+									prg_rbg_getcolor_16bpp_palette,
+									prg_generate_rbg_end);
+							}
+							glUseProgram(prg_rbg_0_2w_p1_16bpp_p_);
+							break;
+						}
+						case 3: {
+							if (prg_rbg_0_2w_p1_16bpp_ == 0) {
+								prg_rbg_0_2w_p1_16bpp_ = compile_color_dot(
+									S(a_prg_rbg_0_2w_p1_4bpp),
+									prg_rbg_getcolor_16bpp_rbg,
+									prg_generate_rbg_end);
+							}
+							glUseProgram(prg_rbg_0_2w_p1_16bpp_);
+							break;
+						}
+						case 4: {
+							if (prg_rbg_0_2w_p1_32bpp_ == 0) {
+								prg_rbg_0_2w_p1_32bpp_ = compile_color_dot(
+									S(a_prg_rbg_0_2w_p1_4bpp), 
+									prg_rbg_getcolor_32bpp_rbg, 
+									prg_generate_rbg_end);
+							}
+							glUseProgram(prg_rbg_0_2w_p1_32bpp_);
+							break;
+						}
+					}
+				}
+				else {
+					switch (rbg->info.colornumber) {
+					case 0: {
+            if (prg_rbg_0_2w_p2_4bpp_ == 0) {
+              prg_rbg_0_2w_p2_4bpp_ = compile_color_dot(
+                S(a_prg_rbg_0_2w_p2_4bpp),
                 prg_rbg_getcolor_4bpp,
                 prg_generate_rbg_end);
             }
-            glUseProgram(prg_rbg_1_2w_bitmap_4bpp_);
-            break;
-          }
-          case 1: {
-            if (prg_rbg_1_2w_bitmap_8bpp_ == 0) {
-              prg_rbg_1_2w_bitmap_8bpp_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_bitmap),
+						glUseProgram(prg_rbg_0_2w_p2_4bpp_);
+						break;
+					}
+					case 1: { // NHL97(In Game), BIOS 
+            if (prg_rbg_0_2w_p2_8bpp_ == 0) {
+              prg_rbg_0_2w_p2_8bpp_ = compile_color_dot(
+                S(a_prg_rbg_0_2w_p2_8bpp),
                 prg_rbg_getcolor_8bpp,
                 prg_generate_rbg_end);
             }
-            glUseProgram(prg_rbg_1_2w_bitmap_8bpp_);
-            break;
+						glUseProgram(prg_rbg_0_2w_p2_8bpp_);
+						break;
+					}
+					case 2: {
+						if (prg_rbg_0_2w_p2_16bpp_p_ == 0) {
+							prg_rbg_0_2w_p2_16bpp_p_ = compile_color_dot(
+								S(a_prg_rbg_0_2w_p2_4bpp),
+								prg_rbg_getcolor_16bpp_palette,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_0_2w_p2_16bpp_p_);
+						break;
+					}
+					case 3: {
+						if (prg_rbg_0_2w_p2_16bpp_ == 0) {
+							prg_rbg_0_2w_p2_16bpp_ = compile_color_dot(
+								S(a_prg_rbg_0_2w_p2_4bpp),
+								prg_rbg_getcolor_16bpp_rbg,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_0_2w_p2_16bpp_);
+						break;
+					}
+					case 4: {
+						if (prg_rbg_0_2w_p2_32bpp_ == 0) {
+							prg_rbg_0_2w_p2_32bpp_ = compile_color_dot(
+								S(a_prg_rbg_0_2w_p2_4bpp),
+								prg_rbg_getcolor_32bpp_rbg,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_0_2w_p2_32bpp_);
+						break;
+					}
+					}
+				}
+			}
+		}
+		else if ( (fixVdp2Regs->RPMD == 1 && rbg->rgb_type == 0)  || rbg->rgb_type == 0x04 ) {
+			if (rbg->info.isbitmap) {
+				switch (rbg->info.colornumber) {
+				case 0: {
+					if (prg_rbg_1_2w_bitmap_4bpp_ == 0) {
+						prg_rbg_1_2w_bitmap_4bpp_ = compile_color_dot(
+							S(a_prg_rbg_1_2w_bitmap),
+							prg_rbg_getcolor_4bpp,
+							prg_generate_rbg_end);
+					}
+					glUseProgram(prg_rbg_1_2w_bitmap_4bpp_);
+					break;
+				}
+				case 1: {
+          if (prg_rbg_1_2w_bitmap_8bpp_ == 0) {
+            prg_rbg_1_2w_bitmap_8bpp_ = compile_color_dot(
+              S(a_prg_rbg_1_2w_bitmap),
+              prg_rbg_getcolor_8bpp,
+              prg_generate_rbg_end);
           }
-          case 2: {
-            if (prg_rbg_1_2w_bitmap_16bpp_p_ == 0) {
-              prg_rbg_1_2w_bitmap_16bpp_p_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_bitmap),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_end);
-            }
-            glUseProgram(prg_rbg_1_2w_bitmap_16bpp_p_);
-            break;
-          }
-          case 3: {
-            if (prg_rbg_1_2w_bitmap_16bpp_ == 0) {
-              prg_rbg_1_2w_bitmap_16bpp_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_bitmap),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            glUseProgram(prg_rbg_1_2w_bitmap_16bpp_);
-            break;
-          }
-          case 4: {
-            if (prg_rbg_1_2w_bitmap_32bpp_ == 0) {
-              prg_rbg_1_2w_bitmap_32bpp_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_bitmap),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            glUseProgram(prg_rbg_1_2w_bitmap_32bpp_);
-            break;
-          }
-          }
-        }
-        else {
-          if (rbg->info.patterndatasize == 1) {
-            switch (rbg->info.colornumber) {
-            case 0: {
-              if (prg_rbg_1_2w_p1_4bpp_ == 0) {
-                prg_rbg_1_2w_p1_4bpp_ = compile_color_dot(
-                  S(a_prg_rbg_1_2w_p1_4bpp),
-                  prg_rbg_getcolor_4bpp,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p1_4bpp_);
-              break;
-            }
-            case 1: {
-              if (prg_rbg_1_2w_p1_8bpp_ == 0) {
-                prg_rbg_1_2w_p1_8bpp_ = compile_color_dot(
-                  S(a_prg_rbg_1_2w_p1_8bpp),
-                  prg_rbg_getcolor_8bpp,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p1_8bpp_);
-              break;
-            }
-            case 2: {
-              if (prg_rbg_1_2w_p1_16bpp_p_ == 0) {
-                prg_rbg_1_2w_p1_16bpp_p_ = compile_color_dot(
-                  S(a_prg_rbg_1_2w_p1_4bpp),
-                  prg_rbg_getcolor_16bpp_palette,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p1_16bpp_p_);
-              break;
-            }
-            case 3: {
-              if (prg_rbg_1_2w_p1_16bpp_ == 0) {
-                prg_rbg_1_2w_p1_16bpp_ = compile_color_dot(
-                  S(a_prg_rbg_1_2w_p1_4bpp),
-                  prg_rbg_getcolor_16bpp_rbg,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p1_16bpp_);
-              break;
-            }
-            case 4: {
-              if (prg_rbg_1_2w_p1_32bpp_ == 0) {
-                prg_rbg_1_2w_p1_32bpp_ = compile_color_dot(
-                  S(a_prg_rbg_0_2w_p1_4bpp),
-                  prg_rbg_getcolor_32bpp_rbg,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p1_32bpp_);
-              break;
-            }
-            }
-          }
-          else {
-            switch (rbg->info.colornumber) {
-            case 0: {
-              if (prg_rbg_1_2w_p2_4bpp_ == 0) {
-                prg_rbg_1_2w_p2_4bpp_ = compile_color_dot(
-                  S(a_prg_rbg_1_2w_p2_4bpp),
-                  prg_rbg_getcolor_4bpp,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p2_4bpp_);
-              break;
-            }
-            case 1: {
-              if (prg_rbg_1_2w_p2_8bpp_ == 0) {
-                prg_rbg_1_2w_p2_8bpp_ = compile_color_dot(
-                  S(a_prg_rbg_1_2w_p2_8bpp),
-                  prg_rbg_getcolor_8bpp,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p2_8bpp_);
-              break;
-            }
-            case 2: {
-              if (prg_rbg_1_2w_p2_16bpp_p_ == 0) {
-                prg_rbg_1_2w_p2_16bpp_p_ = compile_color_dot(
-                  S(a_prg_rbg_1_2w_p2_4bpp),
-                  prg_rbg_getcolor_16bpp_palette,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p2_16bpp_p_);
-              break;
-            }
-            case 3: {
-              if (prg_rbg_1_2w_p2_16bpp_ == 0) {
-                prg_rbg_1_2w_p2_16bpp_ = compile_color_dot(
-                  S(a_prg_rbg_1_2w_p2_4bpp),
-                  prg_rbg_getcolor_16bpp_rbg,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p2_16bpp_);
-              break;
-            }
-            case 4: {
-              if (prg_rbg_1_2w_p2_32bpp_ == 0) {
-                prg_rbg_1_2w_p2_32bpp_ = compile_color_dot(
-                  S(a_prg_rbg_1_2w_p2_4bpp),
-                  prg_rbg_getcolor_32bpp_rbg,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_1_2w_p2_32bpp_);
-              break;
-            }
-            }
-          }
-        }
-      }
-      else if (fixVdp2Regs->RPMD == 2) {
-        if (rbg->info.isbitmap) {
-          switch (rbg->info.colornumber) {
-          case 0: {
-            if (prg_rbg_2_2w_bitmap_4bpp_ == 0) {
-              prg_rbg_2_2w_bitmap_4bpp_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_bitmap),
+					glUseProgram(prg_rbg_1_2w_bitmap_8bpp_);
+					break;
+				}
+				case 2: {
+					if (prg_rbg_1_2w_bitmap_16bpp_p_ == 0) {
+						prg_rbg_1_2w_bitmap_16bpp_p_ = compile_color_dot(
+							S(a_prg_rbg_1_2w_bitmap),
+							prg_rbg_getcolor_16bpp_palette,
+							prg_generate_rbg_end);
+					}
+					glUseProgram(prg_rbg_1_2w_bitmap_16bpp_p_);
+					break;
+				}
+				case 3: {
+					if (prg_rbg_1_2w_bitmap_16bpp_ == 0) {
+						prg_rbg_1_2w_bitmap_16bpp_ = compile_color_dot(
+							S(a_prg_rbg_1_2w_bitmap),
+							prg_rbg_getcolor_16bpp_rbg,
+							prg_generate_rbg_end);
+					}
+					glUseProgram(prg_rbg_1_2w_bitmap_16bpp_);
+					break;
+				}
+				case 4: {
+					if (prg_rbg_1_2w_bitmap_32bpp_ == 0) {
+						prg_rbg_1_2w_bitmap_32bpp_ = compile_color_dot(
+							S(a_prg_rbg_1_2w_bitmap),
+							prg_rbg_getcolor_32bpp_rbg,
+							prg_generate_rbg_end);
+					}
+					glUseProgram(prg_rbg_1_2w_bitmap_32bpp_);
+					break;
+				}
+				}
+			}
+			else {
+				if (rbg->info.patterndatasize == 1) {
+					switch (rbg->info.colornumber) {
+					case 0: {
+            if (prg_rbg_1_2w_p1_4bpp_ == 0) {
+              prg_rbg_1_2w_p1_4bpp_ = compile_color_dot(
+                S(a_prg_rbg_1_2w_p1_4bpp),
                 prg_rbg_getcolor_4bpp,
                 prg_generate_rbg_end);
             }
-            glUseProgram(prg_rbg_2_2w_bitmap_4bpp_);
-            break;
-          }
-          case 1: {
+						glUseProgram(prg_rbg_1_2w_p1_4bpp_);
+						break;
+					}
+					case 1: {
+            if (prg_rbg_1_2w_p1_8bpp_ == 0) {
+              prg_rbg_1_2w_p1_8bpp_ = compile_color_dot(
+                S(a_prg_rbg_1_2w_p1_8bpp),
+                prg_rbg_getcolor_8bpp,
+                prg_generate_rbg_end);
+            }
+						glUseProgram(prg_rbg_1_2w_p1_8bpp_);
+						break;
+					}
+					case 2: {
+						if (prg_rbg_1_2w_p1_16bpp_p_ == 0) {
+							prg_rbg_1_2w_p1_16bpp_p_ = compile_color_dot(
+								S(a_prg_rbg_1_2w_p1_4bpp),
+								prg_rbg_getcolor_16bpp_palette,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_1_2w_p1_16bpp_p_);
+						break;
+					}
+					case 3: {
+						if (prg_rbg_1_2w_p1_16bpp_ == 0) {
+							prg_rbg_1_2w_p1_16bpp_ = compile_color_dot(
+								S(a_prg_rbg_1_2w_p1_4bpp),
+								prg_rbg_getcolor_16bpp_rbg,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_1_2w_p1_16bpp_);
+						break;
+					}
+					case 4: {
+						if (prg_rbg_1_2w_p1_32bpp_ == 0) {
+							prg_rbg_1_2w_p1_32bpp_ = compile_color_dot(
+								S(a_prg_rbg_0_2w_p1_4bpp),
+								prg_rbg_getcolor_32bpp_rbg,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_1_2w_p1_32bpp_);
+						break;
+					}
+					}
+				}
+				else {
+					switch (rbg->info.colornumber) {
+					case 0: {
+            if (prg_rbg_1_2w_p2_4bpp_ == 0) {
+              prg_rbg_1_2w_p2_4bpp_ = compile_color_dot(
+                S(a_prg_rbg_1_2w_p2_4bpp),
+                prg_rbg_getcolor_4bpp,
+                prg_generate_rbg_end);
+            }
+						glUseProgram(prg_rbg_1_2w_p2_4bpp_);
+						break;
+					}
+					case 1: {
+            if (prg_rbg_1_2w_p2_8bpp_ == 0) {
+              prg_rbg_1_2w_p2_8bpp_ = compile_color_dot(
+                S(a_prg_rbg_1_2w_p2_8bpp),
+                prg_rbg_getcolor_8bpp,
+                prg_generate_rbg_end);
+            }
+						glUseProgram(prg_rbg_1_2w_p2_8bpp_);
+						break;
+					}
+					case 2: {
+						if (prg_rbg_1_2w_p2_16bpp_p_ == 0) {
+							prg_rbg_1_2w_p2_16bpp_p_ = compile_color_dot(
+								S(a_prg_rbg_1_2w_p2_4bpp),
+								prg_rbg_getcolor_16bpp_palette,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_1_2w_p2_16bpp_p_);
+						break;
+					}
+					case 3: {
+						if (prg_rbg_1_2w_p2_16bpp_ == 0) {
+							prg_rbg_1_2w_p2_16bpp_ = compile_color_dot(
+								S(a_prg_rbg_1_2w_p2_4bpp),
+								prg_rbg_getcolor_16bpp_rbg,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_1_2w_p2_16bpp_);
+						break;
+					}
+					case 4: {
+						if (prg_rbg_1_2w_p2_32bpp_ == 0) {
+							prg_rbg_1_2w_p2_32bpp_ = compile_color_dot(
+								S(a_prg_rbg_1_2w_p2_4bpp),
+								prg_rbg_getcolor_32bpp_rbg,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_1_2w_p2_32bpp_);
+						break;
+					}
+					}
+				}
+			}
+		}
+		else if (fixVdp2Regs->RPMD == 2) {
+				if (rbg->info.isbitmap) {
+					switch (rbg->info.colornumber) {
+					case 0: {
+						if (prg_rbg_2_2w_bitmap_4bpp_ == 0) {
+							prg_rbg_2_2w_bitmap_4bpp_ = compile_color_dot(
+								S(a_prg_rbg_2_2w_bitmap),
+								prg_rbg_getcolor_4bpp,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_2_2w_bitmap_4bpp_);
+						break;
+					}
+					case 1: {
             if (prg_rbg_2_2w_bitmap_8bpp_ == 0) {
               prg_rbg_2_2w_bitmap_8bpp_ = compile_color_dot(
                 S(a_prg_rbg_2_2w_bitmap),
                 prg_rbg_getcolor_8bpp,
                 prg_generate_rbg_end);
             }
-            glUseProgram(prg_rbg_2_2w_bitmap_8bpp_);
-            break;
-          }
-          case 2: {
-            if (prg_rbg_2_2w_bitmap_16bpp_p_ == 0) {
-              prg_rbg_2_2w_bitmap_16bpp_p_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_bitmap),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_end);
-            }
-            glUseProgram(prg_rbg_2_2w_bitmap_16bpp_p_);
-            break;
-          }
-          case 3: {
-            if (prg_rbg_2_2w_bitmap_16bpp_ == 0) {
-              prg_rbg_2_2w_bitmap_16bpp_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_bitmap),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            glUseProgram(prg_rbg_2_2w_bitmap_16bpp_);
-            break;
-          }
-          case 4: {
-            if (prg_rbg_2_2w_bitmap_32bpp_ == 0) {
-              prg_rbg_2_2w_bitmap_32bpp_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_bitmap),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            glUseProgram(prg_rbg_2_2w_bitmap_32bpp_);
-            break;
-          }
-          }
-
-        }
-        else {
-          if (rbg->info.patterndatasize == 1) {
-            switch (rbg->info.colornumber) {
-            case 0: { // BlukSlash
-              if (prg_rbg_2_2w_p1_4bpp_ == 0) {
-                prg_rbg_2_2w_p1_4bpp_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p1_4bpp),
-                  prg_rbg_getcolor_4bpp,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p1_4bpp_);
-              break;
-            }
-            case 1: { // Panzer Dragoon Zwei, Toshiden(Title) ToDo: Sky bug
-              if (prg_rbg_2_2w_p1_8bpp_ == 0) {
-                prg_rbg_2_2w_p1_8bpp_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p1_8bpp),
-                  prg_rbg_getcolor_8bpp,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p1_8bpp_);
-              break;
-            }
-            case 2: {
-              if (prg_rbg_2_2w_p1_16bpp_p_ == 0) {
-                prg_rbg_2_2w_p1_16bpp_p_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p1_4bpp),
-                  prg_rbg_getcolor_16bpp_palette,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p1_16bpp_p_);
-              break;
-            }
-            case 3: {
-              if (prg_rbg_2_2w_p1_16bpp_ == 0) {
-                prg_rbg_2_2w_p1_16bpp_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p1_4bpp),
-                  prg_rbg_getcolor_16bpp_rbg,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p1_16bpp_);
-              break;
-            }
-            case 4: {
-              if (prg_rbg_2_2w_p1_32bpp_ == 0) {
-                prg_rbg_2_2w_p1_32bpp_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p1_4bpp),
-                  prg_rbg_getcolor_32bpp_rbg,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p1_32bpp_);
-              break;
-            }
-            }
-          }
-          else {
-            switch (rbg->info.colornumber) {
-            case 0: {
-              if (prg_rbg_2_2w_p2_4bpp_ == 0) {
-                prg_rbg_2_2w_p2_4bpp_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p2_4bpp),
-                  prg_rbg_getcolor_4bpp,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p2_4bpp_);
-              break;
-            }
-            case 1: {
-              if (prg_rbg_2_2w_p2_8bpp_ == 0) {
-                prg_rbg_2_2w_p2_8bpp_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p2_8bpp),
-                  prg_rbg_getcolor_8bpp,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p2_8bpp_);
-              break;
-            }
-            case 2: {
-              if (prg_rbg_2_2w_p2_16bpp_p_ == 0) {
-                prg_rbg_2_2w_p2_16bpp_p_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p2_4bpp),
-                  prg_rbg_getcolor_16bpp_palette,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p2_16bpp_p_);
-              break;
-            }
-            case 3: {
-              if (prg_rbg_2_2w_p2_16bpp_ == 0) {
-                prg_rbg_2_2w_p2_16bpp_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p2_4bpp),
-                  prg_rbg_getcolor_16bpp_rbg,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p2_16bpp_);
-              break;
-            }
-            case 4: {
-              if (prg_rbg_2_2w_p2_32bpp_ == 0) {
-                prg_rbg_2_2w_p2_32bpp_ = compile_color_dot(
-                  S(a_prg_rbg_2_2w_p2_4bpp),
-                  prg_rbg_getcolor_32bpp_rbg,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_2_2w_p2_32bpp_);
-              break;
-            }
-            }
-          }
-        }
-      }
-      else if (fixVdp2Regs->RPMD == 3) {
-
-        if (rbg->info.isbitmap) {
-          switch (rbg->info.colornumber) {
-          case 0: {
-            if (prg_rbg_3_2w_bitmap_4bpp_ == 0) {
-              prg_rbg_3_2w_bitmap_4bpp_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_bitmap),
-                prg_rbg_getcolor_4bpp,
-                prg_generate_rbg_end);
-            }
-            glUseProgram(prg_rbg_3_2w_bitmap_4bpp_);
-            break;
-          }
-          case 1: {
-            if (prg_rbg_3_2w_bitmap_8bpp_ == 0) {
-              prg_rbg_3_2w_bitmap_8bpp_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_bitmap),
-                prg_rbg_getcolor_8bpp,
-                prg_generate_rbg_end);
-            }
-            glUseProgram(prg_rbg_3_2w_bitmap_8bpp_);
-            break;
-          }
-          case 2: {
-            if (prg_rbg_3_2w_bitmap_16bpp_p_ == 0) {
-              prg_rbg_3_2w_bitmap_16bpp_p_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_bitmap),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_end);
-            }
-            glUseProgram(prg_rbg_3_2w_bitmap_16bpp_p_);
-            break;
-          }
-          case 3: {
-            if (prg_rbg_3_2w_bitmap_16bpp_ == 0) {
-              prg_rbg_3_2w_bitmap_16bpp_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_bitmap),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            glUseProgram(prg_rbg_3_2w_bitmap_16bpp_);
-            break;
-          }
-          case 4: {
-            if (prg_rbg_3_2w_bitmap_32bpp_ == 0) {
-              prg_rbg_3_2w_bitmap_32bpp_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_bitmap),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            glUseProgram(prg_rbg_3_2w_bitmap_32bpp_);
-            break;
-          }
-          }
-
-        }
-        else {
-          if (rbg->info.patterndatasize == 1) {
-            switch (rbg->info.colornumber) {
-            case 0: {
-              if (prg_rbg_3_2w_p1_4bpp_ == 0) {
-                prg_rbg_3_2w_p1_4bpp_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p1_4bpp),
-                  prg_rbg_getcolor_4bpp,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p1_4bpp_);
-              break;
-            }
-            case 1: { // Final Fight Revenge, Grandia main
-              if (prg_rbg_3_2w_p1_8bpp_ == 0) {
-                prg_rbg_3_2w_p1_8bpp_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p1_8bpp),
-                  prg_rbg_getcolor_8bpp,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p1_8bpp_);
-              break;
-            }
-            case 2: {
-              if (prg_rbg_3_2w_p1_16bpp_p_ == 0) {
-                prg_rbg_3_2w_p1_16bpp_p_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p1_4bpp),
-                  prg_rbg_getcolor_16bpp_palette,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p1_16bpp_p_);
-              break;
-            }
-            case 3: { // Power Drift
-              if (prg_rbg_3_2w_p1_16bpp_ == 0) {
-                prg_rbg_3_2w_p1_16bpp_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p1_4bpp),
-                  prg_rbg_getcolor_16bpp_rbg,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p1_16bpp_);
-              break;
-            }
-            case 4: {
-              if (prg_rbg_3_2w_p1_32bpp_ == 0) {
-                prg_rbg_3_2w_p1_32bpp_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p1_4bpp),
-                  prg_rbg_getcolor_32bpp_rbg,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p1_32bpp_);
-              break;
-            }
-            }
-          }
-          else {
-            switch (rbg->info.colornumber) {
-            case 0: {
-              if (prg_rbg_3_2w_p2_4bpp_ == 0) {
-                prg_rbg_3_2w_p2_4bpp_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p2_4bpp),
-                  prg_rbg_getcolor_4bpp,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p2_4bpp_);
-              break;
-            }
-            case 1: {
-              if (prg_rbg_3_2w_p2_8bpp_ == 0) {
-                prg_rbg_3_2w_p2_8bpp_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p2_8bpp),
-                  prg_rbg_getcolor_8bpp,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p2_8bpp_);
-              break;
-            }
-            case 2: {
-              if (prg_rbg_3_2w_p2_16bpp_p_ == 0) {
-                prg_rbg_3_2w_p2_16bpp_p_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p2_4bpp),
-                  prg_rbg_getcolor_16bpp_palette,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p2_16bpp_p_);
-              break;
-            }
-            case 3: {
-              if (prg_rbg_3_2w_p2_16bpp_ == 0) {
-                prg_rbg_3_2w_p2_16bpp_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p2_4bpp),
-                  prg_rbg_getcolor_16bpp_rbg,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p2_16bpp_);
-              break;
-            }
-            case 4: {
-              if (prg_rbg_3_2w_p2_32bpp_ == 0) {
-                prg_rbg_3_2w_p2_32bpp_ = compile_color_dot(
-                  S(a_prg_rbg_3_2w_p2_4bpp),
-                  prg_rbg_getcolor_32bpp_rbg,
-                  prg_generate_rbg_end);
-              }
-              glUseProgram(prg_rbg_3_2w_p2_32bpp_);
-              break;
-            }
-            }
-          }
-        }
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_window_);
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(vdp2WindowInfo)*(int(rbg->vres / rbg->rotate_mval_v) << rbg->info.hres_shift), (void*)rbg->info.pWinInfo);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, ssbo_window_);
-      }
-    }
-
-
-    ErrorHandle("glUseProgram");
-
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_vram_);
-    //glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, 0x80000, (void*)Vdp2Ram);
-    if (mapped_vram == nullptr) mapped_vram = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, 0x80000, GL_MAP_WRITE_BIT );
-    memcpy(mapped_vram, Vdp2Ram, 0x80000);
-    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-    mapped_vram = nullptr;
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo_vram_);
-    ErrorHandle("glBindBufferBase");
-
-    if (rbg->info.specialcolormode == 3 || paraA.k_mem_type != 0 || paraB.k_mem_type != 0) {
-      if (ssbo_cram_ == 0) {
-        glGenBuffers(1, &ssbo_cram_);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_cram_);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 0x1000, NULL, GL_DYNAMIC_DRAW);
-      }
-      glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_cram_);
-      glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, 0x1000, (void*)Vdp2ColorRam);
-      glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, ssbo_cram_);
-    }
-
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_paraA_);
-    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(vdp2rotationparameter_struct), (void*)&paraA);
-    glBufferSubData(GL_SHADER_STORAGE_BUFFER, sizeof(vdp2rotationparameter_struct), sizeof(vdp2rotationparameter_struct), (void*)&paraB);
-    ErrorHandle("glBufferSubData");
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo_paraA_);
-
-    uniform.hres_scale = 1.0 / rbg->rotate_mval_h;
-    uniform.vres_scale = 1.0 / rbg->rotate_mval_v;
-    uniform.cellw = rbg->info.cellw;
-    uniform.cellh = rbg->info.cellh;
-    uniform.paladdr_ = rbg->info.paladdr;
-    uniform.pagesize = rbg->pagesize;
-    uniform.patternshift = rbg->patternshift;
-    uniform.planew = rbg->info.planew;
-    uniform.pagewh = rbg->info.pagewh;
-    uniform.patterndatasize = rbg->info.patterndatasize;
-    uniform.supplementdata = rbg->info.supplementdata;
-    uniform.auxmode = rbg->info.auxmode;
-    uniform.patternwh = rbg->info.patternwh;
-    uniform.coloroffset = rbg->info.coloroffset;
-    uniform.transparencyenable = rbg->info.transparencyenable;
-    uniform.specialcolormode = rbg->info.specialcolormode;
-    uniform.specialcolorfunction = rbg->info.specialcolorfunction;
-    uniform.specialcode = rbg->info.specialcode;
-    uniform.colornumber = rbg->info.colornumber;
-    uniform.window_area_mode = rbg->info.WindwAreaMode;
-    uniform.alpha_ = (float)rbg->info.alpha / 255.0f;
-    uniform.specialprimode = rbg->info.specialprimode;
-    uniform.priority = rbg->info.priority;
-
-    if (Vdp2Internal.ColorMode < 2) {
-      uniform.cram_shift = 1;
-    }
-    else {
-      uniform.cram_shift = 2;
-    }
-    uniform.hires_shift = rbg->info.hres_shift;
-
-    glBindBuffer(GL_UNIFORM_BUFFER, scene_uniform);
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(RBGUniform), (void*)&uniform);
-    ErrorHandle("glBufferSubData");
-    glBindBufferBase(GL_UNIFORM_BUFFER, 3, scene_uniform);
-
-    if (rbg->rgb_type == 0x04) {
-      if (tex_surface_1 == 0) {
-        glActiveTexture(GL_TEXTURE0);
-        glGenTextures(1, &tex_surface_1);
-        glBindTexture(GL_TEXTURE_2D, tex_surface_1);
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-        ErrorHandle("glBindTexture");
-        glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, tex_width_, tex_height_);
-        ErrorHandle("glTexStorage2D");
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        ErrorHandle("glTexParameteri");
-        glBindImageTexture(0, tex_surface_1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
-      }
-      else {
-        glBindImageTexture(0, tex_surface_1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
-        ErrorHandle("glBindImageTexture 1");
-      }
-    }
-    else {
-      glBindImageTexture(0, tex_surface_, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
-      ErrorHandle("glBindImageTexture 0");
-    }
-
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);
-    glDispatchCompute(work_groups_x, work_groups_y, 1);
-    ErrorHandle("glDispatchCompute");
-
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-  }
-
-  //-----------------------------------------------
-  GLuint getTexture(int id) {
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);
-    if (id == 1) {
-      return tex_surface_;
-    }
-    return tex_surface_1;
-  }
-
-  //-----------------------------------------------
-  void onFinish() {
-    if (ssbo_vram_ != 0 && mapped_vram == nullptr) {
-      glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_vram_);
-      mapped_vram = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, 0x80000, GL_MAP_WRITE_BIT );
-      glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-    }
-  }
-
-};
-
-#if defined(HAVE_VULKAN)
-
-#include "vulkan/RBGGeneratorVulkan.h"
-#include <iostream>
-/*
-#define VK_CHECK_RESULT(f)																				\
-{																										\
-	vk::Result res = (f);																					\
-	if (res != vk::Result::eSuccess)																				\
-	{																									\
-		std::cout << "Fatal : VkResult is \"" << vk::to_string(res) << "\" in " << __FILE__ << " at line " << __LINE__ << "\n"; \
-		assert(res == vk::Result::eSuccess);																		\
-	}																									\
-}
-*/
-
-#include "shaderc/shaderc.hpp"
-using shaderc::Compiler;
-using shaderc::CompileOptions;
-using shaderc::SpvCompilationResult;
-
-RBGGeneratorVulkan::RBGGeneratorVulkan() {
-
-  rbgUniformParam = new RBGUniform();
-
-}
-
-RBGGeneratorVulkan::~RBGGeneratorVulkan() {
-  delete rbgUniformParam;
-}
-
-
-void RBGGeneratorVulkan::init(VIDVulkan * vulkan, int width, int height) {
-
-  this->vulkan = vulkan;
-  VkDevice device = vulkan->getDevice();
-  vk::Device d(device);
-  resize(width,height);
-  if (queue) return;
-
-  int length = sizeof(prg_generate_rbg_base) + 64;
-  snprintf(prg_generate_rbg,length,prg_generate_rbg_base,16,16);
-
-  //queue = vk::Queue(vulkan->getVulkanQueue()); //d.getQueue(vulkan->getVulkanComputeQueueFamilyIndex(), 0);
-  //queue = d.getQueue(vulkan->getVulkanComputeQueueFamilyIndex(), vulkan->getVulkanComputeQueue());
-
-  queue = vk::Queue(vulkan->getVulkanComputeQueue());
-
-  for( int i=0; i<MAX_RBG_RENDER; i++ ){
-    semaphores[i].ready = d.createSemaphore({});
-    semaphores[i].complete = d.createSemaphore({});
-    commandfence[i] = d.createFence( vk::FenceCreateInfo() );
-    commandfence[i] = d.createFence( vk::FenceCreateInfo() );
-  }
-
-  //vk::SubmitInfo computeSubmitInfo;
-  //computeSubmitInfo.signalSemaphoreCount = 1;
-  //computeSubmitInfo.pSignalSemaphores = &semaphores.complete;
-  //queue.submit(computeSubmitInfo, {});
-  
-  //commandPool = d.createCommandPool({ vk::CommandPoolCreateFlagBits::eResetCommandBuffer, vulkan->getVulkanGraphicsQueueFamilyIndex() /*vulkan->getVulkanComputeQueueFamilyIndex()*/ });
-  commandPool = d.createCommandPool({ vk::CommandPoolCreateFlagBits::eResetCommandBuffer, vulkan->getVulkanComputeQueueFamilyIndex() });
-
-  for( int i=0; i<MAX_RBG_RENDER; i++ ){
-    command[i] = d.allocateCommandBuffers({ commandPool, vk::CommandBufferLevel::ePrimary, 1 })[0];
-  }
-  
-  // Create sampler
-  vk::SamplerCreateInfo sampler;
-  sampler.magFilter = vk::Filter::eLinear;
-  sampler.minFilter = vk::Filter::eLinear;
-  sampler.mipmapMode = vk::SamplerMipmapMode::eNearest;
-  sampler.addressModeU = vk::SamplerAddressMode::eClampToBorder;
-  sampler.addressModeV = sampler.addressModeU;
-  sampler.addressModeW = sampler.addressModeU;
-  sampler.mipLodBias = 0.0f;
-  sampler.maxAnisotropy = 1.0f;
-  sampler.compareOp = vk::CompareOp::eNever;
-  sampler.minLod = 0.0f;
-  sampler.maxLod = 1.0f;
-  sampler.borderColor = vk::BorderColor::eFloatOpaqueWhite;
-  this->sampler = d.createSampler(sampler);
-
-
-  int size = sizeof(RBGUniform);
-  auto allocatedSize = getAllainedSize(size);
-
-  VkBuffer u;
-  VkDeviceMemory m;
-  vulkan->createBuffer(allocatedSize,
-    VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, u, m);
-  for (int i = 0; i < MAX_RBG_RENDER; i++) {
-    rbgUniform[i].buf = vk::Buffer(u);
-    rbgUniform[i].mem = vk::DeviceMemory(m);
-  }
-
-  allocatedSize = getAllainedSize(0x80000);
-  vulkan->createBuffer(allocatedSize,
-    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, u, m);
-  ssbo_vram_.buf = vk::Buffer(u);
-  ssbo_vram_.mem = vk::DeviceMemory(m);
-
-  struct_size_ = sizeof(vdp2rotationparameter_struct);
-
-  allocatedSize = getAllainedSize(struct_size_) * 2;
-  vulkan->createBuffer(allocatedSize,
-    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, u, m);
-  ssbo_paraA_.buf = vk::Buffer(u);
-  ssbo_paraA_.mem = vk::DeviceMemory(m);
-
-  allocatedSize = getAllainedSize(sizeof(vdp2WindowInfo) * 512);
-  vulkan->createBuffer(allocatedSize,
-    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, u, m);
-  ssbo_window_.buf = vk::Buffer(u);
-  ssbo_window_.mem = vk::DeviceMemory(m);
-
-  allocatedSize = getAllainedSize(0x1000);
-  vulkan->createBuffer(allocatedSize,
-    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, u, m);
-  ssbo_cram_.buf = vk::Buffer(u);
-  ssbo_cram_.mem = vk::DeviceMemory(m);
-
-  std::vector<vk::DescriptorPoolSize> poolSizes = {
-      vk::DescriptorPoolSize{ vk::DescriptorType::eStorageImage, MAX_RBG_RENDER },
-      vk::DescriptorPoolSize{ vk::DescriptorType::eStorageBuffer, MAX_RBG_RENDER },
-      vk::DescriptorPoolSize{ vk::DescriptorType::eStorageBuffer, MAX_RBG_RENDER },
-      vk::DescriptorPoolSize{ vk::DescriptorType::eUniformBuffer, MAX_RBG_RENDER },
-      vk::DescriptorPoolSize{ vk::DescriptorType::eStorageBuffer, MAX_RBG_RENDER },
-      vk::DescriptorPoolSize{ vk::DescriptorType::eStorageBuffer, MAX_RBG_RENDER },
-  };
-
-  descriptorPool = d.createDescriptorPool(vk::DescriptorPoolCreateInfo{ {}, 6, (uint32_t)poolSizes.size(), poolSizes.data() });
-  std::vector<vk::DescriptorSetLayoutBinding> setLayoutBindings = {
-    vk::DescriptorSetLayoutBinding{ 0, vk::DescriptorType::eStorageImage, 1, vk::ShaderStageFlagBits::eCompute },
-    vk::DescriptorSetLayoutBinding{ 1, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute },
-    vk::DescriptorSetLayoutBinding{ 2, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute },
-    vk::DescriptorSetLayoutBinding{ 3, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eCompute },
-    vk::DescriptorSetLayoutBinding{ 4, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute },
-    vk::DescriptorSetLayoutBinding{ 5, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute }
-  };
-
-  descriptorSetLayout = d.createDescriptorSetLayout({ {}, (uint32_t)setLayoutBindings.size(), setLayoutBindings.data() });
-  for (int i = 0; i < MAX_RBG_RENDER; i++) {
-    descriptorSet[i] = d.allocateDescriptorSets({ descriptorPool, 1, &descriptorSetLayout })[0];
-  }
-  updateDescriptorSets(0);
-
-  std::string target;
-
-  for (int i = 0; i < 6; i++) {
-    target += a_prg_rbg_0_2w_bitmap[i];
-  }
-  Compiler compiler;
-  CompileOptions options;
-  options.SetOptimizationLevel(shaderc_optimization_level_performance);
-  SpvCompilationResult result = compiler.CompileGlslToSpv(
-    target,
-    shaderc_compute_shader,
-    "a_prg_rbg_0_2w_bitmap",
-    options);
-
-  printf("%s%d\n", " erros: ", (int)result.GetNumErrors());
-  if (result.GetNumErrors() != 0) {
-    printf("%s%s\n", "messages", result.GetErrorMessage().c_str());
-    throw std::runtime_error("failed to create shader module!");
-  }
-  std::vector<uint32_t> data = { result.cbegin(), result.cend() };
-
-  VkShaderModuleCreateInfo createInfo = {};
-  createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-  createInfo.codeSize = data.size() * sizeof(uint32_t);
-  createInfo.pCode = data.data();
-  VkShaderModule shaderModule;
-  if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create shader module!");
-  }
-
-  pipelineLayout = d.createPipelineLayout({ {}, 1, &descriptorSetLayout });
-
-  vk::ComputePipelineCreateInfo computePipelineCreateInfo;
-  computePipelineCreateInfo.layout = pipelineLayout;
-  computePipelineCreateInfo.stage.module = vk::ShaderModule(shaderModule);
-  computePipelineCreateInfo.stage.stage = vk::ShaderStageFlagBits::eCompute;
-  computePipelineCreateInfo.stage.pName = "main";
-  auto a = d.createComputePipelines(nullptr, computePipelineCreateInfo);
-  pipeline = a.value[0];
-
-  d.destroyShaderModule(vk::ShaderModule(shaderModule));
-
-}
-
-void RBGGeneratorVulkan::updateDescriptorSets( int texindex ) {
-
-  VkDevice device = vulkan->getDevice();
-  vk::Device d(device);
-
-  if (descriptorSet[0] == (vk::DescriptorSet)nullptr) return;
-
-  vk::DescriptorBufferInfo descriptor;
-  descriptor.buffer = rbgUniform[currentIndex].buf;
-  descriptor.range = VK_WHOLE_SIZE;
-  descriptor.offset = 0;
-
-  vk::DescriptorImageInfo texDescriptor{
-    this->sampler, tex_surface[texindex].view, vk::ImageLayout::eGeneral
-  };
-
-  vk::DescriptorBufferInfo descriptor2;
-  descriptor2.buffer = ssbo_vram_.buf;
-  descriptor2.range = VK_WHOLE_SIZE;
-  descriptor2.offset = 0;
-
-  vk::DescriptorBufferInfo descriptor3;
-  descriptor3.buffer = ssbo_paraA_.buf;
-  descriptor3.range = VK_WHOLE_SIZE;
-  descriptor3.offset = 0;
-
-  vk::DescriptorBufferInfo descriptor4;
-  descriptor4.buffer = ssbo_window_.buf;
-  descriptor4.range = VK_WHOLE_SIZE;
-  descriptor4.offset = 0;
-
-  vk::DescriptorBufferInfo descriptor5;
-  descriptor5.buffer = ssbo_cram_.buf;
-  descriptor5.range = VK_WHOLE_SIZE;
-  descriptor5.offset = 0;
-
-
-  std::vector<vk::WriteDescriptorSet> computeWriteDescriptorSets{
-    { descriptorSet[currentIndex], 0, 0, 1, vk::DescriptorType::eStorageImage, &texDescriptor },
-    { descriptorSet[currentIndex], 1, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &descriptor2 },
-    { descriptorSet[currentIndex], 2, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &descriptor3 },
-    { descriptorSet[currentIndex], 3, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &descriptor },
-    { descriptorSet[currentIndex], 4, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &descriptor4 },
-    { descriptorSet[currentIndex], 5, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &descriptor5 },
-  };
-
-  
-  d.updateDescriptorSets(computeWriteDescriptorSets, {});
-}
-
-
-int RBGGeneratorVulkan::getAllainedSize(int size) {
-
-  VkDevice device = vulkan->getDevice();
-  vk::Device d(device);
-  auto p = vk::PhysicalDevice(vulkan->getPhysicalDevice());
-  auto alignment = p.getProperties().limits.minUniformBufferOffsetAlignment;
-  auto extra = size % alignment;
-  auto count = 1;
-  auto alignedSize = size + (alignment - extra);
-  auto allocatedSize = count * alignedSize;
-
-  return allocatedSize;
-
-}
-
-void RBGGeneratorVulkan::resize(int width, int height) {
-  if (tex_width_ == width && tex_height_ == height) return;
-
-  VkDevice device = vulkan->getDevice();
-  vk::Device d(device);
-
-  YGLDEBUG("resize %d, %d\n", width, height);
-
-  tex_width_ = width;
-  tex_height_ = height;
-
-  if (tex_surface[0].image) d.destroyImage(tex_surface[0].image);
-  if (tex_surface[0].view) d.destroyImageView(tex_surface[0].view);
-  if (tex_surface[0].mem) d.freeMemory(tex_surface[0].mem);
-  if (tex_surface[1].image) d.destroyImage(tex_surface[1].image);
-  if (tex_surface[1].view) d.destroyImageView(tex_surface[1].view);
-  if (tex_surface[1].mem) d.freeMemory(tex_surface[1].mem);
-
-  
-  vk::ImageCreateInfo imageCreateInfo;
-  imageCreateInfo.imageType = vk::ImageType::e2D;
-  imageCreateInfo.format = vk::Format::eR8G8B8A8Unorm;
-  imageCreateInfo.extent.width = width;
-  imageCreateInfo.extent.height = height;
-  imageCreateInfo.extent.depth = 1;
-  imageCreateInfo.mipLevels = 1;
-  imageCreateInfo.arrayLayers = 1;
-  imageCreateInfo.tiling = vk::ImageTiling::eOptimal;
-  imageCreateInfo.usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage;
-  //imageCreateInfo.sharingMode = vk::SharingMode::eConcurrent;
-  //imageCreateInfo.queueFamilyIndexCount = 2;
-  //uint32_t indexes[] = { vulkan->getVulkanGraphicsQueueFamilyIndex(),vulkan->getVulkanComputeQueueFamilyIndex() };
-  //imageCreateInfo.pQueueFamilyIndices = indexes;
-  imageCreateInfo.sharingMode = vk::SharingMode::eExclusive; //VK_SHARING_MODE_EXCLUSIVE;
-  imageCreateInfo.pQueueFamilyIndices	= nullptr;
-
-  for (int i = 0; i < 2; i++) {
-    VK_CHECK_RESULT( VkResult(d.createImage(&imageCreateInfo, nullptr, &tex_surface[i].image)) );
-
-    vk::MemoryRequirements memReqs = d.getImageMemoryRequirements(tex_surface[i].image);
-    vk::MemoryAllocateInfo memAllocInfo;
-
-    memAllocInfo.allocationSize = memReqs.size;
-    memAllocInfo.memoryTypeIndex = vulkan->findMemoryType(memReqs.memoryTypeBits, VK_MEMORY_HEAP_DEVICE_LOCAL_BIT);
-    tex_surface[i].mem = d.allocateMemory(memAllocInfo);
-    d.bindImageMemory(tex_surface[i].image, tex_surface[i].mem, 0);
-
-    vk::ImageViewCreateInfo view;
-    view.viewType = vk::ImageViewType::e2D;
-    view.format = vk::Format::eR8G8B8A8Unorm;
-    view.subresourceRange = { vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 };
-    view.components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
-    view.image = tex_surface[i].image;
-    tex_surface[i].view = d.createImageView(view);
-
-    vulkan->transitionImageLayout(VkImage(tex_surface[i].image), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-    vulkan->transitionImageLayout(VkImage(tex_surface[i].image), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-  }
-
-  updateDescriptorSets(0);
-}
-
-#include <functional>
-#include <fstream>
-#include <iostream>
-
-vk::Pipeline RBGGeneratorVulkan::compile_color_dot(
-  const char * base[], int size, const char * color, const char * dot) {
-  
-  VkDevice device = vulkan->getDevice();
-  vk::Device d(device);
-
-  vk::Pipeline rtn = nullptr;
-
-  std::string target;
-  for (int i = 0; i < size-2; i++) {
-    target += base[i];
-  }
-
-  target += color;
-  target += dot;
-
-  std::vector<uint32_t> data;
-  std::vector<char> buffer;
-  SpvCompilationResult result;
-#if !defined(_WINDOWS)
-  std::size_t hash_value = std::hash<std::string>()(target);
-  // Serach from file
-  string mempath = YuiGetShaderCachePath();
-  std::string hashval = std::to_string(hash_value);
-  string file_path = mempath + hashval + ".spv";
-
-  // バイナリファイルを読み込む
-  std::ifstream file(file_path, std::ios::binary);
-  if (file) {
-
-    // ファイルサイズを取得する
-    file.seekg(0, std::ios::end);
-    std::size_t file_size = file.tellg();
-    file.seekg(0, std::ios::beg);
-
-    // ファイルの内容を読み込む
-    buffer.resize(file_size);
-    file.read(buffer.data(), file_size);
-
-    for( int i=0; i<file_size; i+= 4 ){
-      uint32_t value = static_cast<uint32_t>(buffer[i+0])
-                   | (static_cast<uint32_t>(buffer[i+1]) << 8)
-                   | (static_cast<uint32_t>(buffer[i+2]) << 16)
-                   | (static_cast<uint32_t>(buffer[i+3]) << 24);
-      data.push_back(value);
-    }
-    file.close();
-
-  }else{
-#endif
-    Compiler compiler;
-    CompileOptions options;
-    options.SetOptimizationLevel(shaderc_optimization_level_performance);
-    //options.SetOptimizationLevel(shaderc_optimization_level_zero);
-    result = compiler.CompileGlslToSpv(
-      target,
-      shaderc_compute_shader,
-      "RBG",
-      options);
-
-    printf("%s%d\n", " erros: ", (int)result.GetNumErrors());
-    if (result.GetNumErrors() != 0) {
-      printf("%s", target.c_str());
-      printf("%s%s\n", "messages", result.GetErrorMessage().c_str());
-      throw std::runtime_error("failed to create shader module!");
-    }
-    data = { result.cbegin(), result.cend() };
-#if !defined(_WINDOWS)
-    std::ofstream file(file_path, std::ios::binary);
-    if (!file) {
-        std::cerr << "Error: Failed to open file." << std::endl;
-        throw std::runtime_error("failed to create shader module!");
-    }
-
-    // データを書き込む
-    file.write((const char*)data.data(), data.size()* sizeof(uint32_t));
-
-    // ファイルを閉じる
-    file.close();
-  }
-#endif
-
-  VkShaderModuleCreateInfo createInfo = {};
-  createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-  createInfo.codeSize = data.size() * sizeof(uint32_t);
-  createInfo.pCode = data.data();
-  VkShaderModule shaderModule;
-  if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create shader module!");
-  }
-
-  pipelineLayout = d.createPipelineLayout({ {}, 1, &descriptorSetLayout });
-
-  vk::ComputePipelineCreateInfo computePipelineCreateInfo;
-  computePipelineCreateInfo.layout = pipelineLayout;
-  computePipelineCreateInfo.stage.module = vk::ShaderModule(shaderModule);
-  computePipelineCreateInfo.stage.stage = vk::ShaderStageFlagBits::eCompute;
-  computePipelineCreateInfo.stage.pName = "main";
-  auto a = d.createComputePipelines(nullptr, computePipelineCreateInfo);
-  rtn = a.value[0];
-
-  d.destroyShaderModule(vk::ShaderModule(shaderModule));
-
-  return rtn;
-}
-
-void RBGGeneratorVulkan::update(VIDVulkan::RBGDrawInfo * rbg, const vdp2rotationparameter_struct & paraa, const vdp2rotationparameter_struct & parab){
-
-  VkDevice device = vulkan->getDevice();
-  vk::Device d(device);
-
-  vk::Pipeline CurrentPipeline = nullptr;
-
-  int texindex = 0;
-  if (rbg->rgb_type != 0) {
-    texindex = 1;
-  }
-
-  // Line color insersion
-  if (rbg->info.LineColorBase != 0 && VDP2_CC_NONE != (rbg->info.blendmode & 0x03)) {
-    if (fixVdp2Regs->RPMD == 0 || (fixVdp2Regs->RPMD == 3 && (fixVdp2Regs->WCTLD & 0xA) == 0)) {
-      if (rbg->info.isbitmap) {
-        if (!prg_rbg_0_2w_bitmap_8bpp_line_) {
-          prg_rbg_0_2w_bitmap_8bpp_line_ = compile_color_dot(
-            S(a_prg_rbg_0_2w_bitmap),
-            prg_rbg_getcolor_8bpp,
-            prg_generate_rbg_line_end);
-        }
-        CurrentPipeline = prg_rbg_0_2w_bitmap_8bpp_line_;
-      }
-      else {
-        if (rbg->info.patterndatasize == 1) {
-          switch (rbg->info.colornumber) {
-          case 0: { // Decathalete ToDo: Line Color Bug
-            if (!prg_rbg_0_2w_p1_4bpp_line_) {
-              prg_rbg_0_2w_p1_4bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p1_4bpp),
-                prg_rbg_getcolor_4bpp,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p1_4bpp_line_;
-            break;
-          }
-          case 1: { // Sakatuku 2 Ground, GUNDAM Side Story 2, SonicR ToDo: 2Player
-            if (!prg_rbg_0_2w_p1_8bpp_line_) {
-              prg_rbg_0_2w_p1_8bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p1_8bpp),
-                prg_rbg_getcolor_8bpp,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p1_8bpp_line_;
-            break;
-          }
-          case 2: {
-            if (!prg_rbg_0_2w_p1_16bpp_p_line_) {
-              prg_rbg_0_2w_p1_16bpp_p_line_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p1_4bpp),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p1_16bpp_p_line_;
-            break;
-          }
-          case 3: {
-            if (!prg_rbg_0_2w_p1_16bpp_line_) {
-              prg_rbg_0_2w_p1_16bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p1_4bpp),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p1_16bpp_line_;
-            break;
-          }
-          case 4: {
-            if (!prg_rbg_0_2w_p1_32bpp_line_) {
-              prg_rbg_0_2w_p1_32bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p1_4bpp),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p1_32bpp_line_;
-            break;
-          }
-          }
-        }
-        else {
-          switch (rbg->info.colornumber) {
-          case 0: {
-            if (!prg_rbg_0_2w_p2_4bpp_line_) {
-              prg_rbg_0_2w_p2_4bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p2_4bpp),
-                prg_rbg_getcolor_4bpp,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p2_4bpp_line_;
-            break;
-          }
-          case 1: { // Thunder Force V
-            if (!prg_rbg_0_2w_p2_8bpp_line_) {
-              prg_rbg_0_2w_p2_8bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p2_8bpp),
-                prg_rbg_getcolor_8bpp,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p2_8bpp_line_;
-            break;
-          }
-          case 2: {
-            if (!prg_rbg_0_2w_p2_16bpp_p_line_) {
-              prg_rbg_0_2w_p2_16bpp_p_line_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p2_4bpp),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p2_16bpp_p_line_;
-            break;
-          }
-          case 3: {
-            if (!prg_rbg_0_2w_p2_16bpp_line_) {
-              prg_rbg_0_2w_p2_16bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p2_4bpp),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p2_16bpp_line_;
-            break;
-          }
-          case 4: {
-            if (!prg_rbg_0_2w_p2_32bpp_line_) {
-              prg_rbg_0_2w_p2_32bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p2_4bpp),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p2_32bpp_line_;
-            break;
-          }
-          }
-        }
-      }
-    }
-    else if (fixVdp2Regs->RPMD == 1) {
-      if (rbg->info.isbitmap) {
-        if (!prg_rbg_1_2w_bitmap_8bpp_line_) {
-          prg_rbg_1_2w_bitmap_8bpp_line_ = compile_color_dot(
-            S(a_prg_rbg_1_2w_bitmap),
-            prg_rbg_getcolor_8bpp,
-            prg_generate_rbg_line_end);
-        }
-        CurrentPipeline=prg_rbg_1_2w_bitmap_8bpp_line_;
-      }
-      else {
-        if (rbg->info.patterndatasize == 1) {
-          switch (rbg->info.colornumber) {
-          case 0: {
-            if (!prg_rbg_1_2w_p1_4bpp_line_) {
-              prg_rbg_1_2w_p1_4bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_p1_4bpp),
-                prg_rbg_getcolor_4bpp,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p1_4bpp_line_;
-            break;
-          }
-          case 1: {
-            if (!prg_rbg_1_2w_p1_8bpp_line_) {
-              prg_rbg_1_2w_p1_8bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_p1_8bpp),
-                prg_rbg_getcolor_8bpp,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p1_8bpp_line_;
-            break;
-          }
-          case 2: {
-            if (!prg_rbg_1_2w_p1_16bpp_p_line_) {
-              prg_rbg_1_2w_p1_16bpp_p_line_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_p1_4bpp),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p1_16bpp_p_line_;
-            break;
-          }
-          case 3: {
-            if (!prg_rbg_1_2w_p1_16bpp_line_) {
-              prg_rbg_1_2w_p1_16bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_p1_4bpp),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p1_16bpp_line_;
-            break;
-          }
-          case 4: {
-            if (!prg_rbg_1_2w_p1_32bpp_line_) {
-              prg_rbg_1_2w_p1_32bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p1_4bpp),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p1_32bpp_line_;
-            break;
-          }
-          }
-        }
-        else {
-          switch (rbg->info.colornumber) {
-          case 0: {
-            if (!prg_rbg_1_2w_p2_4bpp_line_) {
-              prg_rbg_1_2w_p2_4bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_p2_4bpp),
-                prg_rbg_getcolor_4bpp,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p2_4bpp_line_;
-            break;
-          }
-          case 1: {
-            if (!prg_rbg_1_2w_p2_8bpp_line_) {
-              prg_rbg_1_2w_p2_8bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_p2_8bpp),
-                prg_rbg_getcolor_8bpp,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p2_8bpp_line_;
-            break;
-          }
-          case 2: {
-            if (!prg_rbg_1_2w_p2_16bpp_p_line_) {
-              prg_rbg_1_2w_p2_16bpp_p_line_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_p2_4bpp),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p2_16bpp_p_line_;
-            break;
-          }
-          case 3: {
-            if (!prg_rbg_1_2w_p2_16bpp_line_) {
-              prg_rbg_1_2w_p2_16bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_p2_4bpp),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p2_16bpp_line_;
-            break;
-          }
-          case 4: {
-            if (!prg_rbg_1_2w_p2_32bpp_line_) {
-              prg_rbg_1_2w_p2_32bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_p2_4bpp),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p2_32bpp_line_;
-            break;
-          }
-          }
-        }
-      }
-    }
-    else if (fixVdp2Regs->RPMD == 2) {
-      if (rbg->info.isbitmap) {
-        if (!prg_rbg_2_2w_bitmap_8bpp_line_) {
-          prg_rbg_2_2w_bitmap_8bpp_line_ = compile_color_dot(
-            S(a_prg_rbg_2_2w_bitmap),
-            prg_rbg_getcolor_8bpp,
-            prg_generate_rbg_line_end);
-        }
-        CurrentPipeline=prg_rbg_2_2w_bitmap_8bpp_line_;
-      }
-      else {
-        if (rbg->info.patterndatasize == 1) {
-          switch (rbg->info.colornumber) {
-          case 0: {
-            if (!prg_rbg_2_2w_p1_4bpp_line_) {
-              prg_rbg_2_2w_p1_4bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_p1_4bpp),
-                prg_rbg_getcolor_4bpp,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_2_2w_p1_4bpp_line_;
-            break;
-          }
-          case 1: { // Panzer Dragoon 1
-            if (!prg_rbg_2_2w_p1_8bpp_line_) {
-              prg_rbg_2_2w_p1_8bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_p1_8bpp),
-                prg_rbg_getcolor_8bpp,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_2_2w_p1_8bpp_line_;
-            break;
-          }
-          case 2: {
-            if (!prg_rbg_2_2w_p1_16bpp_p_line_) {
-              prg_rbg_2_2w_p1_16bpp_p_line_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_p1_4bpp),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_2_2w_p1_16bpp_p_line_;
-            break;
-          }
-          case 3: {
-            if (!prg_rbg_2_2w_p1_16bpp_line_) {
-              prg_rbg_2_2w_p1_16bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_p1_4bpp),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_2_2w_p1_16bpp_line_;
-            break;
-          }
-          case 4: {
-            if (!prg_rbg_2_2w_p1_32bpp_line_) {
-              prg_rbg_2_2w_p1_32bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_p1_4bpp),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_2_2w_p1_32bpp_line_;
-            break;
-          }
-          }
-        }
-        else {
-          switch (rbg->info.colornumber) {
-          case 0: {
-            if (!prg_rbg_2_2w_p2_4bpp_line_) {
-              prg_rbg_2_2w_p2_4bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_p2_4bpp),
-                prg_rbg_getcolor_4bpp,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_2_2w_p2_4bpp_line_;
-            break;
-          }
-          case 1: {
-            if (!prg_rbg_2_2w_p2_8bpp_line_) {
-              prg_rbg_2_2w_p2_8bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_p2_8bpp),
-                prg_rbg_getcolor_8bpp,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_2_2w_p2_8bpp_line_;
-            break;
-          }
-          case 2: {
-            if (!prg_rbg_2_2w_p2_16bpp_p_line_) {
-              prg_rbg_2_2w_p2_16bpp_p_line_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_p2_4bpp),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_2_2w_p2_16bpp_p_line_;
-            break;
-          }
-          case 3: {
-            if (!prg_rbg_2_2w_p2_16bpp_line_) {
-              prg_rbg_2_2w_p2_16bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_p2_4bpp),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_2_2w_p2_16bpp_line_;
-            break;
-          }
-          case 4: {
-            if (!prg_rbg_2_2w_p2_32bpp_line_) {
-              prg_rbg_2_2w_p2_32bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_p2_4bpp),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_2_2w_p2_32bpp_line_;
-            break;
-          }
-          }
-        }
-      }
-    }
-    else if (fixVdp2Regs->RPMD == 3) {
-
-      if (rbg->info.isbitmap) {
-        if (!prg_rbg_3_2w_bitmap_8bpp_line_) {
-          prg_rbg_3_2w_bitmap_8bpp_line_ = compile_color_dot(
-            S(a_prg_rbg_3_2w_bitmap),
-            prg_rbg_getcolor_8bpp,
-            prg_generate_rbg_line_end);
-        }
-        CurrentPipeline=prg_rbg_3_2w_bitmap_8bpp_line_;
-      }
-      else {
-        if (rbg->info.patterndatasize == 1) {
-          switch (rbg->info.colornumber) {
-          case 0: {
-            if (!prg_rbg_3_2w_p1_4bpp_line_) {
-              prg_rbg_3_2w_p1_4bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_p1_4bpp),
-                prg_rbg_getcolor_4bpp,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_3_2w_p1_4bpp_line_;
-            break;
-          }
-          case 1: {
-            if (!prg_rbg_3_2w_p1_8bpp_line_) {
-              prg_rbg_3_2w_p1_8bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_p1_8bpp),
-                prg_rbg_getcolor_8bpp,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_3_2w_p1_8bpp_line_;
-            break;
-          }
-          case 2: {
-            if (!prg_rbg_3_2w_p1_16bpp_p_line_) {
-              prg_rbg_3_2w_p1_16bpp_p_line_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_p1_4bpp),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_3_2w_p1_16bpp_p_line_;
-            break;
-          }
-          case 3: {
-            if (!prg_rbg_3_2w_p1_16bpp_line_) {
-              prg_rbg_3_2w_p1_16bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_p1_4bpp),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_3_2w_p1_16bpp_line_;
-            break;
-          }
-          case 4: {
-            if (!prg_rbg_3_2w_p1_32bpp_line_) {
-              prg_rbg_3_2w_p1_32bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_p1_4bpp),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_3_2w_p1_32bpp_line_;
-            break;
-          }
-          }
-        }
-        else {
-          switch (rbg->info.colornumber) {
-          case 0: {
-            if (!prg_rbg_3_2w_p2_4bpp_line_) {
-              prg_rbg_3_2w_p2_4bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_p2_4bpp),
-                prg_rbg_getcolor_4bpp,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_3_2w_p2_4bpp_line_;
-            break;
-          }
-          case 1: {
-            if (!prg_rbg_3_2w_p2_8bpp_line_) {
-              prg_rbg_3_2w_p2_8bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_p2_8bpp),
-                prg_rbg_getcolor_8bpp,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_3_2w_p2_8bpp_line_;
-            break;
-          }
-          case 2: {
-            if (!prg_rbg_3_2w_p2_16bpp_p_line_) {
-              prg_rbg_3_2w_p2_16bpp_p_line_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_p2_4bpp),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_3_2w_p2_16bpp_p_line_;
-            break;
-          }
-          case 3: {
-            if (!prg_rbg_3_2w_p2_16bpp_line_) {
-              prg_rbg_3_2w_p2_16bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_p2_4bpp),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_3_2w_p2_16bpp_line_;
-            break;
-          }
-          case 4: {
-            if (!prg_rbg_3_2w_p2_32bpp_line_) {
-              prg_rbg_3_2w_p2_32bpp_line_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_p2_4bpp),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_line_end);
-            }
-            CurrentPipeline=prg_rbg_3_2w_p2_32bpp_line_;
-            break;
-          }
-          }
-        }
-      }
-      // ToDo: Copy Window Info
-      //glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_window_);
-      //glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(vdp2WindowInfo)*(int(rbg->vres / rbg->rotate_mval_v) << rbg->info.hres_shift), (void*)rbg->info.pWinInfo);
-      //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, ssbo_window_);
-    }
-
-  }
-
-  // no line color insersion
-  else {
-    if (rbg->rgb_type == 0 && (fixVdp2Regs->RPMD == 0 || (fixVdp2Regs->RPMD == 3 && (fixVdp2Regs->WCTLD & 0xA) == 0))) {
-      if (rbg->info.isbitmap) {
-        switch (rbg->info.colornumber) {
-        case 0: {
-          if (!prg_rbg_0_2w_bitmap_4bpp_) {
-            prg_rbg_0_2w_bitmap_4bpp_ = compile_color_dot(
-              S(a_prg_rbg_0_2w_bitmap),
-              prg_rbg_getcolor_4bpp,
-              prg_generate_rbg_end);
-          }
-          CurrentPipeline=prg_rbg_0_2w_bitmap_4bpp_;
-          break;
-        }
-        case 1: { // SF3S1( Initial )
-          if (!prg_rbg_0_2w_bitmap_8bpp_) {
-            prg_rbg_0_2w_bitmap_8bpp_ = compile_color_dot(
-              S(a_prg_rbg_0_2w_bitmap),
-              prg_rbg_getcolor_8bpp,
-              prg_generate_rbg_end);
-          }
-          CurrentPipeline=prg_rbg_0_2w_bitmap_8bpp_;
-          break;
-        }
-        case 2: {
-          if (!prg_rbg_0_2w_bitmap_16bpp_p_) {
-            prg_rbg_0_2w_bitmap_16bpp_p_ = compile_color_dot(
-              S(a_prg_rbg_0_2w_bitmap),
-              prg_rbg_getcolor_16bpp_palette,
-              prg_generate_rbg_end);
-          }
-          CurrentPipeline=prg_rbg_0_2w_bitmap_16bpp_p_;
-          break;
-        }
-        case 3: { // NHL 97 Title, GRANDIA Title
-          if (!prg_rbg_0_2w_bitmap_16bpp_) {
-            prg_rbg_0_2w_bitmap_16bpp_ = compile_color_dot(
-              S(a_prg_rbg_0_2w_bitmap),
-              prg_rbg_getcolor_16bpp_rbg,
-              prg_generate_rbg_end);
-          }
-          CurrentPipeline=prg_rbg_0_2w_bitmap_16bpp_;
-          break;
-        }
-        case 4: {
-          if (!prg_rbg_0_2w_bitmap_32bpp_) {
-            prg_rbg_0_2w_bitmap_32bpp_ = compile_color_dot(
-              S(a_prg_rbg_0_2w_bitmap),
-              prg_rbg_getcolor_32bpp_rbg,
-              prg_generate_rbg_end);
-          }
-          CurrentPipeline=prg_rbg_0_2w_bitmap_32bpp_;
-          break;
-        }
-        }
-      }
-      else {
-        if (rbg->info.patterndatasize == 1) {
-          switch (rbg->info.colornumber) {
-          case 0: { // Dead or Alive, Rediant Silver Gun, Diehard
-            if (!prg_rbg_0_2w_p1_4bpp_) {
-              prg_rbg_0_2w_p1_4bpp_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p1_4bpp),
-                prg_rbg_getcolor_4bpp,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p1_4bpp_;
-            break;
-          }
-          case 1: { // Sakatuku 2 ( Initial Setting ), Virtua Fighter 2, Virtual-on
-            if (!prg_rbg_0_2w_p1_8bpp_) {
-              prg_rbg_0_2w_p1_8bpp_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p1_8bpp),
-                prg_rbg_getcolor_8bpp,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p1_8bpp_;
-            break;
-          }
-          case 2: {
-            if (!prg_rbg_0_2w_p1_16bpp_p_) {
-              prg_rbg_0_2w_p1_16bpp_p_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p1_4bpp),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p1_16bpp_p_;
-            break;
-          }
-          case 3: {
-            if (!prg_rbg_0_2w_p1_16bpp_) {
-              prg_rbg_0_2w_p1_16bpp_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p1_4bpp),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p1_16bpp_;
-            break;
-          }
-          case 4: {
-            if (!prg_rbg_0_2w_p1_32bpp_) {
-              prg_rbg_0_2w_p1_32bpp_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p1_4bpp),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p1_32bpp_;
-            break;
-          }
-          }
-        }
-        else {
-          switch (rbg->info.colornumber) {
-          case 0: {
-            if (!prg_rbg_0_2w_p2_4bpp_) {
-              prg_rbg_0_2w_p2_4bpp_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p2_4bpp),
-                prg_rbg_getcolor_4bpp,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p2_4bpp_;
-            break;
-          }
-          case 1: { // NHL97(In Game), BIOS 
-            if (!prg_rbg_0_2w_p2_8bpp_) {
-              prg_rbg_0_2w_p2_8bpp_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p2_8bpp),
-                prg_rbg_getcolor_8bpp,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p2_8bpp_;
-            break;
-          }
-          case 2: {
-            if (!prg_rbg_0_2w_p2_16bpp_p_) {
-              prg_rbg_0_2w_p2_16bpp_p_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p2_4bpp),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p2_16bpp_p_;
-            break;
-          }
-          case 3: {
-            if (!prg_rbg_0_2w_p2_16bpp_) {
-              prg_rbg_0_2w_p2_16bpp_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p2_4bpp),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p2_16bpp_;
-            break;
-          }
-          case 4: {
-            if (!prg_rbg_0_2w_p2_32bpp_) {
-              prg_rbg_0_2w_p2_32bpp_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p2_4bpp),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_0_2w_p2_32bpp_;
-            break;
-          }
-          }
-        }
-      }
-    }
-    else if ((fixVdp2Regs->RPMD == 1 && rbg->rgb_type == 0) || rbg->rgb_type == 0x04) {
-      if (rbg->info.isbitmap) {
-        switch (rbg->info.colornumber) {
-        case 0: {
-          if (!prg_rbg_1_2w_bitmap_4bpp_) {
-            prg_rbg_1_2w_bitmap_4bpp_ = compile_color_dot(
-              S(a_prg_rbg_1_2w_bitmap),
-              prg_rbg_getcolor_4bpp,
-              prg_generate_rbg_end);
-          }
-          CurrentPipeline=prg_rbg_1_2w_bitmap_4bpp_;
-          break;
-        }
-        case 1: {
-          if (!prg_rbg_1_2w_bitmap_8bpp_) {
-            prg_rbg_1_2w_bitmap_8bpp_ = compile_color_dot(
-              S(a_prg_rbg_1_2w_bitmap),
-              prg_rbg_getcolor_8bpp,
-              prg_generate_rbg_end);
-          }
-          CurrentPipeline=prg_rbg_1_2w_bitmap_8bpp_;
-          break;
-        }
-        case 2: {
-          if (!prg_rbg_1_2w_bitmap_16bpp_p_) {
-            prg_rbg_1_2w_bitmap_16bpp_p_ = compile_color_dot(
-              S(a_prg_rbg_1_2w_bitmap),
-              prg_rbg_getcolor_16bpp_palette,
-              prg_generate_rbg_end);
-          }
-          CurrentPipeline=prg_rbg_1_2w_bitmap_16bpp_p_;
-          break;
-        }
-        case 3: {
-          if (!prg_rbg_1_2w_bitmap_16bpp_) {
-            prg_rbg_1_2w_bitmap_16bpp_ = compile_color_dot(
-              S(a_prg_rbg_1_2w_bitmap),
-              prg_rbg_getcolor_16bpp_rbg,
-              prg_generate_rbg_end);
-          }
-          CurrentPipeline=prg_rbg_1_2w_bitmap_16bpp_;
-          break;
-        }
-        case 4: {
-          if (!prg_rbg_1_2w_bitmap_32bpp_) {
-            prg_rbg_1_2w_bitmap_32bpp_ = compile_color_dot(
-              S(a_prg_rbg_1_2w_bitmap),
-              prg_rbg_getcolor_32bpp_rbg,
-              prg_generate_rbg_end);
-          }
-          CurrentPipeline=prg_rbg_1_2w_bitmap_32bpp_;
-          break;
-        }
-        }
-      }
-      else {
-        if (rbg->info.patterndatasize == 1) {
-          switch (rbg->info.colornumber) {
-          case 0: {
-            if (!prg_rbg_1_2w_p1_4bpp_) {
-              prg_rbg_1_2w_p1_4bpp_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_p1_4bpp),
-                prg_rbg_getcolor_4bpp,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p1_4bpp_;
-            break;
-          }
-          case 1: {
-            if (!prg_rbg_1_2w_p1_8bpp_) {
-              prg_rbg_1_2w_p1_8bpp_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_p1_8bpp),
-                prg_rbg_getcolor_8bpp,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p1_8bpp_;
-            break;
-          }
-          case 2: {
-            if (!prg_rbg_1_2w_p1_16bpp_p_) {
-              prg_rbg_1_2w_p1_16bpp_p_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_p1_4bpp),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p1_16bpp_p_;
-            break;
-          }
-          case 3: {
-            if (!prg_rbg_1_2w_p1_16bpp_) {
-              prg_rbg_1_2w_p1_16bpp_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_p1_4bpp),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p1_16bpp_;
-            break;
-          }
-          case 4: {
-            if (!prg_rbg_1_2w_p1_32bpp_) {
-              prg_rbg_1_2w_p1_32bpp_ = compile_color_dot(
-                S(a_prg_rbg_0_2w_p1_4bpp),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p1_32bpp_;
-            break;
-          }
-          }
-        }
-        else {
-          switch (rbg->info.colornumber) {
-          case 0: {
-            if (!prg_rbg_1_2w_p2_4bpp_) {
-              prg_rbg_1_2w_p2_4bpp_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_p2_4bpp),
-                prg_rbg_getcolor_4bpp,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p2_4bpp_;
-            break;
-          }
-          case 1: {
-            if (!prg_rbg_1_2w_p2_8bpp_) {
-              prg_rbg_1_2w_p2_8bpp_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_p2_8bpp),
-                prg_rbg_getcolor_8bpp,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p2_8bpp_;
-            break;
-          }
-          case 2: {
-            if (!prg_rbg_1_2w_p2_16bpp_p_) {
-              prg_rbg_1_2w_p2_16bpp_p_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_p2_4bpp),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p2_16bpp_p_;
-            break;
-          }
-          case 3: {
-            if (!prg_rbg_1_2w_p2_16bpp_) {
-              prg_rbg_1_2w_p2_16bpp_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_p2_4bpp),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p2_16bpp_;
-            break;
-          }
-          case 4: {
-            if (!prg_rbg_1_2w_p2_32bpp_) {
-              prg_rbg_1_2w_p2_32bpp_ = compile_color_dot(
-                S(a_prg_rbg_1_2w_p2_4bpp),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_1_2w_p2_32bpp_;
-            break;
-          }
-          }
-        }
-      }
-    }
-    else if (fixVdp2Regs->RPMD == 2) {
-      if (rbg->info.isbitmap) {
-        switch (rbg->info.colornumber) {
-        case 0: {
-          if (!prg_rbg_2_2w_bitmap_4bpp_) {
-            prg_rbg_2_2w_bitmap_4bpp_ = compile_color_dot(
-              S(a_prg_rbg_2_2w_bitmap),
-              prg_rbg_getcolor_4bpp,
-              prg_generate_rbg_end);
-          }
-          CurrentPipeline=prg_rbg_2_2w_bitmap_4bpp_;
-          break;
-        }
-        case 1: {
-          if (!prg_rbg_2_2w_bitmap_8bpp_) {
-            prg_rbg_2_2w_bitmap_8bpp_ = compile_color_dot(
-              S(a_prg_rbg_2_2w_bitmap),
-              prg_rbg_getcolor_8bpp,
-              prg_generate_rbg_end);
-          }
-          CurrentPipeline=prg_rbg_2_2w_bitmap_8bpp_;
-          break;
-        }
-        case 2: {
-          if (!prg_rbg_2_2w_bitmap_16bpp_p_) {
-            prg_rbg_2_2w_bitmap_16bpp_p_ = compile_color_dot(
-              S(a_prg_rbg_2_2w_bitmap),
-              prg_rbg_getcolor_16bpp_palette,
-              prg_generate_rbg_end);
-          }
-          CurrentPipeline=prg_rbg_2_2w_bitmap_16bpp_p_;
-          break;
-        }
-        case 3: {
-          if (!prg_rbg_2_2w_bitmap_16bpp_) {
-            prg_rbg_2_2w_bitmap_16bpp_ = compile_color_dot(
-              S(a_prg_rbg_2_2w_bitmap),
-              prg_rbg_getcolor_16bpp_rbg,
-              prg_generate_rbg_end);
-          }
-          CurrentPipeline=prg_rbg_2_2w_bitmap_16bpp_;
-          break;
-        }
-        case 4: {
-          if (!prg_rbg_2_2w_bitmap_32bpp_) {
-            prg_rbg_2_2w_bitmap_32bpp_ = compile_color_dot(
-              S(a_prg_rbg_2_2w_bitmap),
-              prg_rbg_getcolor_32bpp_rbg,
-              prg_generate_rbg_end);
-          }
-          CurrentPipeline=prg_rbg_2_2w_bitmap_32bpp_;
-          break;
-        }
-        }
-
-      }
-      else {
-        if (rbg->info.patterndatasize == 1) {
-          switch (rbg->info.colornumber) {
-          case 0: { // BlukSlash
-            if (!prg_rbg_2_2w_p1_4bpp_) {
+						glUseProgram(prg_rbg_2_2w_bitmap_8bpp_);
+						break;
+					}
+					case 2: {
+						if (prg_rbg_2_2w_bitmap_16bpp_p_ == 0) {
+							prg_rbg_2_2w_bitmap_16bpp_p_ = compile_color_dot(
+								S(a_prg_rbg_2_2w_bitmap),
+								prg_rbg_getcolor_16bpp_palette,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_2_2w_bitmap_16bpp_p_);
+						break;
+					}
+					case 3: {
+						if (prg_rbg_2_2w_bitmap_16bpp_ == 0) {
+							prg_rbg_2_2w_bitmap_16bpp_ = compile_color_dot(
+								S(a_prg_rbg_2_2w_bitmap),
+								prg_rbg_getcolor_16bpp_rbg,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_2_2w_bitmap_16bpp_);
+						break;
+					}
+					case 4: {
+						if (prg_rbg_2_2w_bitmap_32bpp_ == 0) {
+							prg_rbg_2_2w_bitmap_32bpp_ = compile_color_dot(
+								S(a_prg_rbg_2_2w_bitmap),
+								prg_rbg_getcolor_32bpp_rbg,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_2_2w_bitmap_32bpp_);
+						break;
+					}
+					}
+
+			}
+			else {
+				if (rbg->info.patterndatasize == 1) {
+					switch (rbg->info.colornumber) {
+					case 0: { // BlukSlash
+            if (prg_rbg_2_2w_p1_4bpp_ == 0) {
               prg_rbg_2_2w_p1_4bpp_ = compile_color_dot(
                 S(a_prg_rbg_2_2w_p1_4bpp),
                 prg_rbg_getcolor_4bpp,
                 prg_generate_rbg_end);
             }
-            CurrentPipeline=prg_rbg_2_2w_p1_4bpp_;
-            break;
-          }
-          case 1: { // Panzer Dragoon Zwei, Toshiden(Title) ToDo: Sky bug
-            if (!prg_rbg_2_2w_p1_8bpp_) {
+						glUseProgram(prg_rbg_2_2w_p1_4bpp_);
+						break;
+					}
+					case 1: { // Panzer Dragoon Zwei, Toshiden(Title) ToDo: Sky bug
+            if (prg_rbg_2_2w_p1_8bpp_ == 0) {
               prg_rbg_2_2w_p1_8bpp_ = compile_color_dot(
                 S(a_prg_rbg_2_2w_p1_8bpp),
                 prg_rbg_getcolor_8bpp,
                 prg_generate_rbg_end);
             }
-            CurrentPipeline=prg_rbg_2_2w_p1_8bpp_;
-            break;
-          }
-          case 2: {
-            if (!prg_rbg_2_2w_p1_16bpp_p_) {
-              prg_rbg_2_2w_p1_16bpp_p_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_p1_4bpp),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_2_2w_p1_16bpp_p_;
-            break;
-          }
-          case 3: {
-            if (!prg_rbg_2_2w_p1_16bpp_) {
-              prg_rbg_2_2w_p1_16bpp_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_p1_4bpp),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_2_2w_p1_16bpp_;
-            break;
-          }
-          case 4: {
-            if (!prg_rbg_2_2w_p1_32bpp_) {
-              prg_rbg_2_2w_p1_32bpp_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_p1_4bpp),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_2_2w_p1_32bpp_;
-            break;
-          }
-          }
-        }
-        else {
-          switch (rbg->info.colornumber) {
-          case 0: {
-            if (!prg_rbg_2_2w_p2_4bpp_) {
+						glUseProgram(prg_rbg_2_2w_p1_8bpp_);
+						break;
+					}
+					case 2: {
+						if (prg_rbg_2_2w_p1_16bpp_p_ == 0) {
+							prg_rbg_2_2w_p1_16bpp_p_ = compile_color_dot(
+								S(a_prg_rbg_2_2w_p1_4bpp),
+								prg_rbg_getcolor_16bpp_palette,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_2_2w_p1_16bpp_p_);
+						break;
+					}
+					case 3: {
+						if (prg_rbg_2_2w_p1_16bpp_ == 0) {
+							prg_rbg_2_2w_p1_16bpp_ = compile_color_dot(
+								S(a_prg_rbg_2_2w_p1_4bpp),
+								prg_rbg_getcolor_16bpp_rbg,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_2_2w_p1_16bpp_);
+						break;
+					}
+					case 4: {
+						if (prg_rbg_2_2w_p1_32bpp_ == 0) {
+							prg_rbg_2_2w_p1_32bpp_ = compile_color_dot(
+								S(a_prg_rbg_2_2w_p1_4bpp),
+								prg_rbg_getcolor_32bpp_rbg,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_2_2w_p1_32bpp_);
+						break;
+					}
+					}
+				}
+				else {
+					switch (rbg->info.colornumber) {
+					case 0: {
+            if (prg_rbg_2_2w_p2_4bpp_ == 0) {
               prg_rbg_2_2w_p2_4bpp_ = compile_color_dot(
                 S(a_prg_rbg_2_2w_p2_4bpp),
                 prg_rbg_getcolor_4bpp,
                 prg_generate_rbg_end);
             }
-            CurrentPipeline=prg_rbg_2_2w_p2_4bpp_;
-            break;
-          }
-          case 1: {
-            if (!prg_rbg_2_2w_p2_8bpp_) {
+						glUseProgram(prg_rbg_2_2w_p2_4bpp_);
+						break;
+					}
+					case 1: {
+            if (prg_rbg_2_2w_p2_8bpp_ == 0) {
               prg_rbg_2_2w_p2_8bpp_ = compile_color_dot(
                 S(a_prg_rbg_2_2w_p2_8bpp),
                 prg_rbg_getcolor_8bpp,
                 prg_generate_rbg_end);
             }
-            CurrentPipeline=prg_rbg_2_2w_p2_8bpp_;
-            break;
-          }
-          case 2: {
-            if (!prg_rbg_2_2w_p2_16bpp_p_) {
-              prg_rbg_2_2w_p2_16bpp_p_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_p2_4bpp),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_2_2w_p2_16bpp_p_;
-            break;
-          }
-          case 3: {
-            if (!prg_rbg_2_2w_p2_16bpp_) {
-              prg_rbg_2_2w_p2_16bpp_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_p2_4bpp),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_2_2w_p2_16bpp_;
-            break;
-          }
-          case 4: {
-            if (!prg_rbg_2_2w_p2_32bpp_) {
-              prg_rbg_2_2w_p2_32bpp_ = compile_color_dot(
-                S(a_prg_rbg_2_2w_p2_4bpp),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_2_2w_p2_32bpp_;
-            break;
-          }
-          }
-        }
-      }
-    }
-    else if (fixVdp2Regs->RPMD == 3) {
+						glUseProgram(prg_rbg_2_2w_p2_8bpp_);
+						break;
+					}
+					case 2: {
+						if (prg_rbg_2_2w_p2_16bpp_p_ == 0) {
+							prg_rbg_2_2w_p2_16bpp_p_ = compile_color_dot(
+								S(a_prg_rbg_2_2w_p2_4bpp),
+								prg_rbg_getcolor_16bpp_palette,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_2_2w_p2_16bpp_p_);
+						break;
+					}
+					case 3: {
+						if (prg_rbg_2_2w_p2_16bpp_ == 0) {
+							prg_rbg_2_2w_p2_16bpp_ = compile_color_dot(
+								S(a_prg_rbg_2_2w_p2_4bpp),
+								prg_rbg_getcolor_16bpp_rbg,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_2_2w_p2_16bpp_);
+						break;
+					}
+					case 4: {
+						if (prg_rbg_2_2w_p2_32bpp_ == 0) {
+							prg_rbg_2_2w_p2_32bpp_ = compile_color_dot(
+								S(a_prg_rbg_2_2w_p2_4bpp),
+								prg_rbg_getcolor_32bpp_rbg,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_2_2w_p2_32bpp_);
+						break;
+					}
+					}
+				}
+			}
+		}
+		else if (fixVdp2Regs->RPMD == 3) {
 
-      if (rbg->info.isbitmap) {
-        switch (rbg->info.colornumber) {
-        case 0: {
-          if (!prg_rbg_3_2w_bitmap_4bpp_) {
-            prg_rbg_3_2w_bitmap_4bpp_ = compile_color_dot(
-              S(a_prg_rbg_3_2w_bitmap),
-              prg_rbg_getcolor_4bpp,
-              prg_generate_rbg_end);
-          }
-          CurrentPipeline=prg_rbg_3_2w_bitmap_4bpp_;
-          break;
-        }
-        case 1: {
-          if (!prg_rbg_3_2w_bitmap_8bpp_) {
+			if (rbg->info.isbitmap) {
+				switch (rbg->info.colornumber) {
+				case 0: {
+					if (prg_rbg_3_2w_bitmap_4bpp_ == 0) {
+						prg_rbg_3_2w_bitmap_4bpp_ = compile_color_dot(
+							S(a_prg_rbg_3_2w_bitmap),
+							prg_rbg_getcolor_4bpp,
+							prg_generate_rbg_end);
+					}
+					glUseProgram(prg_rbg_3_2w_bitmap_4bpp_);
+					break;
+				}
+				case 1: {
+          if (prg_rbg_3_2w_bitmap_8bpp_ == 0) {
             prg_rbg_3_2w_bitmap_8bpp_ = compile_color_dot(
               S(a_prg_rbg_3_2w_bitmap),
               prg_rbg_getcolor_8bpp,
               prg_generate_rbg_end);
           }
-          CurrentPipeline=prg_rbg_3_2w_bitmap_8bpp_;
-          break;
-        }
-        case 2: {
-          if (!prg_rbg_3_2w_bitmap_16bpp_p_) {
-            prg_rbg_3_2w_bitmap_16bpp_p_ = compile_color_dot(
-              S(a_prg_rbg_3_2w_bitmap),
-              prg_rbg_getcolor_16bpp_palette,
-              prg_generate_rbg_end);
-          }
-          CurrentPipeline=prg_rbg_3_2w_bitmap_16bpp_p_;
-          break;
-        }
-        case 3: {
-          if (!prg_rbg_3_2w_bitmap_16bpp_) {
-            prg_rbg_3_2w_bitmap_16bpp_ = compile_color_dot(
-              S(a_prg_rbg_3_2w_bitmap),
-              prg_rbg_getcolor_16bpp_rbg,
-              prg_generate_rbg_end);
-          }
-          CurrentPipeline=prg_rbg_3_2w_bitmap_16bpp_;
-          break;
-        }
-        case 4: {
-          if (!prg_rbg_3_2w_bitmap_32bpp_) {
-            prg_rbg_3_2w_bitmap_32bpp_ = compile_color_dot(
-              S(a_prg_rbg_3_2w_bitmap),
-              prg_rbg_getcolor_32bpp_rbg,
-              prg_generate_rbg_end);
-          }
-          CurrentPipeline=prg_rbg_3_2w_bitmap_32bpp_;
-          break;
-        }
-        }
+					glUseProgram(prg_rbg_3_2w_bitmap_8bpp_);
+					break;
+				}
+				case 2: {
+					if (prg_rbg_3_2w_bitmap_16bpp_p_ == 0) {
+						prg_rbg_3_2w_bitmap_16bpp_p_ = compile_color_dot(
+							S(a_prg_rbg_3_2w_bitmap),
+							prg_rbg_getcolor_16bpp_palette,
+							prg_generate_rbg_end);
+					}
+					glUseProgram(prg_rbg_3_2w_bitmap_16bpp_p_);
+					break;
+				}
+				case 3: {
+					if (prg_rbg_3_2w_bitmap_16bpp_ == 0) {
+						prg_rbg_3_2w_bitmap_16bpp_ = compile_color_dot(
+							S(a_prg_rbg_3_2w_bitmap),
+							prg_rbg_getcolor_16bpp_rbg,
+							prg_generate_rbg_end);
+					}
+					glUseProgram(prg_rbg_3_2w_bitmap_16bpp_);
+					break;
+				}
+				case 4: {
+					if (prg_rbg_3_2w_bitmap_32bpp_ == 0) {
+						prg_rbg_3_2w_bitmap_32bpp_ = compile_color_dot(
+							S(a_prg_rbg_3_2w_bitmap),
+							prg_rbg_getcolor_32bpp_rbg,
+							prg_generate_rbg_end);
+					}
+					glUseProgram(prg_rbg_3_2w_bitmap_32bpp_);
+					break;
+				}
+				}
 
-      }
-      else {
-        if (rbg->info.patterndatasize == 1) {
-          switch (rbg->info.colornumber) {
-          case 0: {
-            if (!prg_rbg_3_2w_p1_4bpp_) {
+			}
+			else {
+				if (rbg->info.patterndatasize == 1) {
+					switch (rbg->info.colornumber) {
+					case 0: {
+            if (prg_rbg_3_2w_p1_4bpp_ == 0) {
               prg_rbg_3_2w_p1_4bpp_ = compile_color_dot(
                 S(a_prg_rbg_3_2w_p1_4bpp),
                 prg_rbg_getcolor_4bpp,
                 prg_generate_rbg_end);
             }
-            CurrentPipeline=prg_rbg_3_2w_p1_4bpp_;
-            break;
-          }
-          case 1: { // Final Fight Revenge, Grandia main
-            if (!prg_rbg_3_2w_p1_8bpp_) {
+						glUseProgram(prg_rbg_3_2w_p1_4bpp_);
+						break;
+					}
+					case 1: { // Final Fight Revenge, Grandia main
+            if (prg_rbg_3_2w_p1_8bpp_ == 0) {
               prg_rbg_3_2w_p1_8bpp_ = compile_color_dot(
                 S(a_prg_rbg_3_2w_p1_8bpp),
                 prg_rbg_getcolor_8bpp,
                 prg_generate_rbg_end);
             }
-            CurrentPipeline=prg_rbg_3_2w_p1_8bpp_;
-            break;
-          }
-          case 2: {
-            if (!prg_rbg_3_2w_p1_16bpp_p_) {
-              prg_rbg_3_2w_p1_16bpp_p_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_p1_4bpp),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_3_2w_p1_16bpp_p_;
-            break;
-          }
-          case 3: { // Power Drift
-            if (!prg_rbg_3_2w_p1_16bpp_) {
-              prg_rbg_3_2w_p1_16bpp_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_p1_4bpp),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_3_2w_p1_16bpp_;
-            break;
-          }
-          case 4: {
-            if (!prg_rbg_3_2w_p1_32bpp_) {
-              prg_rbg_3_2w_p1_32bpp_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_p1_4bpp),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_3_2w_p1_32bpp_;
-            break;
-          }
-          }
-        }
-        else {
-          switch (rbg->info.colornumber) {
-          case 0: {
-            if (!prg_rbg_3_2w_p2_4bpp_) {
+						glUseProgram(prg_rbg_3_2w_p1_8bpp_);
+						break;
+					}
+					case 2: {
+						if (prg_rbg_3_2w_p1_16bpp_p_ == 0) {
+							prg_rbg_3_2w_p1_16bpp_p_ = compile_color_dot(
+								S(a_prg_rbg_3_2w_p1_4bpp),
+								prg_rbg_getcolor_16bpp_palette,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_3_2w_p1_16bpp_p_);
+						break;
+					}
+					case 3: { // Power Drift
+						if (prg_rbg_3_2w_p1_16bpp_ == 0) {
+							prg_rbg_3_2w_p1_16bpp_ = compile_color_dot(
+								S(a_prg_rbg_3_2w_p1_4bpp),
+								prg_rbg_getcolor_16bpp_rbg,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_3_2w_p1_16bpp_);
+						break;
+					}
+					case 4: {
+						if (prg_rbg_3_2w_p1_32bpp_ == 0) {
+							prg_rbg_3_2w_p1_32bpp_ = compile_color_dot(
+								S(a_prg_rbg_3_2w_p1_4bpp),
+								prg_rbg_getcolor_32bpp_rbg,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_3_2w_p1_32bpp_);
+						break;
+					}
+					}
+				}
+				else {
+					switch (rbg->info.colornumber) {
+					case 0: {
+            if (prg_rbg_3_2w_p2_4bpp_ == 0) {
               prg_rbg_3_2w_p2_4bpp_ = compile_color_dot(
                 S(a_prg_rbg_3_2w_p2_4bpp),
                 prg_rbg_getcolor_4bpp,
                 prg_generate_rbg_end);
             }
-            CurrentPipeline=prg_rbg_3_2w_p2_4bpp_;
-            break;
-          }
-          case 1: {
-            if (!prg_rbg_3_2w_p2_8bpp_) {
+						glUseProgram(prg_rbg_3_2w_p2_4bpp_);
+						break;
+					}
+					case 1: {
+            if (prg_rbg_3_2w_p2_8bpp_ == 0) {
               prg_rbg_3_2w_p2_8bpp_ = compile_color_dot(
                 S(a_prg_rbg_3_2w_p2_8bpp),
                 prg_rbg_getcolor_8bpp,
                 prg_generate_rbg_end);
             }
-            CurrentPipeline=prg_rbg_3_2w_p2_8bpp_;
-            break;
-          }
-          case 2: {
-            if (!prg_rbg_3_2w_p2_16bpp_p_) {
-              prg_rbg_3_2w_p2_16bpp_p_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_p2_4bpp),
-                prg_rbg_getcolor_16bpp_palette,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_3_2w_p2_16bpp_p_;
-            break;
-          }
-          case 3: {
-            if (!prg_rbg_3_2w_p2_16bpp_) {
-              prg_rbg_3_2w_p2_16bpp_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_p2_4bpp),
-                prg_rbg_getcolor_16bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_3_2w_p2_16bpp_;
-            break;
-          }
-          case 4: {
-            if (!prg_rbg_3_2w_p2_32bpp_) {
-              prg_rbg_3_2w_p2_32bpp_ = compile_color_dot(
-                S(a_prg_rbg_3_2w_p2_4bpp),
-                prg_rbg_getcolor_32bpp_rbg,
-                prg_generate_rbg_end);
-            }
-            CurrentPipeline=prg_rbg_3_2w_p2_32bpp_;
-            break;
-          }
-          }
-        }
-      }
-      // ToDo: Copy Window Info
-      //glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_window_);
-      //glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(vdp2WindowInfo)*(int(rbg->vres / rbg->rotate_mval_v) << rbg->info.hres_shift), (void*)rbg->info.pWinInfo);
-      //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, ssbo_window_);
+						glUseProgram(prg_rbg_3_2w_p2_8bpp_);
+						break;
+					}
+					case 2: {
+						if (prg_rbg_3_2w_p2_16bpp_p_ == 0) {
+							prg_rbg_3_2w_p2_16bpp_p_ = compile_color_dot(
+								S(a_prg_rbg_3_2w_p2_4bpp),
+								prg_rbg_getcolor_16bpp_palette,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_3_2w_p2_16bpp_p_);
+						break;
+					}
+					case 3: {
+						if (prg_rbg_3_2w_p2_16bpp_ == 0) {
+							prg_rbg_3_2w_p2_16bpp_ = compile_color_dot(
+								S(a_prg_rbg_3_2w_p2_4bpp),
+								prg_rbg_getcolor_16bpp_rbg,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_3_2w_p2_16bpp_);
+						break;
+					}
+					case 4: {
+						if (prg_rbg_3_2w_p2_32bpp_ == 0) {
+							prg_rbg_3_2w_p2_32bpp_ = compile_color_dot(
+								S(a_prg_rbg_3_2w_p2_4bpp),
+								prg_rbg_getcolor_32bpp_rbg,
+								prg_generate_rbg_end);
+						}
+						glUseProgram(prg_rbg_3_2w_p2_32bpp_);
+						break;
+					}
+					}
+				}
+			}
+			glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_window_);
+			glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(vdp2WindowInfo)*(int(rbg->vres / rbg->rotate_mval_v)<<rbg->info.hres_shift) , (void*)rbg->info.pWinInfo);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, ssbo_window_);
+		}
+	}
+
+
+  ErrorHandle("glUseProgram");
+
+  glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_vram_);
+  //glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, 0x80000, (void*)Vdp2Ram);
+  if(mapped_vram == nullptr) mapped_vram = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, 0x80000, GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+  memcpy(mapped_vram, Vdp2Ram, 0x80000);
+  glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+  mapped_vram = nullptr;
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo_vram_);
+  ErrorHandle("glBindBufferBase");
+	
+	if (rbg->info.specialcolormode == 3 || paraA.k_mem_type != 0 || paraB.k_mem_type != 0 ) {
+		if (ssbo_cram_ == 0) {
+			glGenBuffers(1, &ssbo_cram_);
+			glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_cram_);
+			glBufferData(GL_SHADER_STORAGE_BUFFER, 0x1000, NULL, GL_DYNAMIC_DRAW);
+		}
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_cram_);
+		glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, 0x1000, (void*)Vdp2ColorRam);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, ssbo_cram_);
+	}
+
+  glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_paraA_);
+	glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(vdp2rotationparameter_struct), (void*)&paraA);
+	glBufferSubData(GL_SHADER_STORAGE_BUFFER, sizeof(vdp2rotationparameter_struct), sizeof(vdp2rotationparameter_struct), (void*)&paraB);
+	ErrorHandle("glBufferSubData");
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo_paraA_);
+
+	uniform.hres_scale = 1.0 / rbg->rotate_mval_h; 
+	uniform.vres_scale = 1.0 / rbg->rotate_mval_v;
+	uniform.cellw = rbg->info.cellw;
+	uniform.cellh = rbg->info.cellh;
+	uniform.paladdr_ = rbg->info.paladdr;
+  uniform.pagesize = rbg->pagesize;
+  uniform.patternshift = rbg->patternshift;
+  uniform.planew = rbg->info.planew;
+  uniform.pagewh = rbg->info.pagewh;
+  uniform.patterndatasize = rbg->info.patterndatasize;
+  uniform.supplementdata = rbg->info.supplementdata;
+  uniform.auxmode = rbg->info.auxmode;
+  uniform.patternwh = rbg->info.patternwh;
+  uniform.coloroffset = rbg->info.coloroffset;
+  uniform.transparencyenable = rbg->info.transparencyenable;
+  uniform.specialcolormode = rbg->info.specialcolormode;
+  uniform.specialcolorfunction = rbg->info.specialcolorfunction;
+  uniform.specialcode = rbg->info.specialcode;
+	uniform.colornumber = rbg->info.colornumber;
+	uniform.window_area_mode = rbg->info.WindwAreaMode;
+	uniform.alpha_ = (float)rbg->info.alpha / 255.0f;
+  uniform.specialprimode = rbg->info.specialprimode;
+  uniform.priority = rbg->info.priority;
+
+	if (Vdp2Internal.ColorMode < 2) {
+		uniform.cram_shift = 1;
+	}
+	else {
+		uniform.cram_shift = 2;
+	}
+  uniform.hires_shift = rbg->info.hres_shift;
+
+  glBindBuffer(GL_UNIFORM_BUFFER, scene_uniform);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(RBGUniform), (void*)&uniform);
+	ErrorHandle("glBufferSubData");
+  glBindBufferBase(GL_UNIFORM_BUFFER, 3, scene_uniform);
+
+	if (rbg->rgb_type == 0x04  ) {
+		if (tex_surface_1 == 0) {
+			glActiveTexture(GL_TEXTURE0);
+      glGenTextures(1, &tex_surface_1);
+			glBindTexture(GL_TEXTURE_2D, tex_surface_1);
+			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+			ErrorHandle("glBindTexture");
+			glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, tex_width_, tex_height_);
+			ErrorHandle("glTexStorage2D");
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			ErrorHandle("glTexParameteri");
+      glBindImageTexture(0, tex_surface_1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
+		}
+		else {
+			glBindImageTexture(0, tex_surface_1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
+			ErrorHandle("glBindImageTexture 1");
+		}
+	}
+	else {
+		glBindImageTexture(0, tex_surface_, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
+		ErrorHandle("glBindImageTexture 0");
+	}
+
+  glDispatchCompute(work_groups_x, work_groups_y, 1);
+  ErrorHandle("glDispatchCompute");
+
+  glBindBuffer(GL_UNIFORM_BUFFER, 0);
+  }
+
+  //-----------------------------------------------
+  GLuint getTexture( int id ) { 
+    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+		if (id == 1) {
+			return tex_surface_;
+		}
+		return tex_surface_1;
+  }
+
+  //-----------------------------------------------
+  void onFinish() {
+    if ( ssbo_vram_ != 0 && mapped_vram == nullptr) {
+      glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_vram_);
+      mapped_vram = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, 0x80000, GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+      glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0 );
     }
   }
-
-
-
-  void* data;
-  if (rbg->info.pWinInfo != nullptr) {
-    int wsize = sizeof(vdp2WindowInfo)*(int(rbg->vres / rbg->rotate_mval_v) << rbg->info.hres_shift);
-    data = d.mapMemory(ssbo_window_.mem, 0, wsize);
-    memcpy(data, (void*)rbg->info.pWinInfo, wsize);
-    d.unmapMemory(ssbo_window_.mem);
-  }
-
-  data = d.mapMemory(ssbo_vram_.mem, 0, 0x80000);
-  memcpy(data, Vdp2Ram, 0x80000);
-  d.unmapMemory(ssbo_vram_.mem);
-
-  if (rbg->info.specialcolormode == 3 || paraa.k_mem_type != 0 || parab.k_mem_type != 0) {
-    data = d.mapMemory(ssbo_cram_.mem, 0, 0x1000);
-    memcpy(data, Vdp2ColorRam, 0x1000);
-    d.unmapMemory(ssbo_cram_.mem);
-  }
-
-  int asize = getAllainedSize(sizeof(vdp2rotationparameter_struct));
-  data = d.mapMemory(ssbo_paraA_.mem, 0, asize*2);
-  memcpy(data, &paraa, sizeof(vdp2rotationparameter_struct) );
-  memcpy(((char*)data + sizeof(vdp2rotationparameter_struct)), &parab, sizeof(vdp2rotationparameter_struct));
-  d.unmapMemory(ssbo_paraA_.mem);
-
-  rbgUniformParam->hres_scale = 1.0 / rbg->rotate_mval_h;
-  rbgUniformParam->vres_scale = 1.0 / rbg->rotate_mval_v;
-  rbgUniformParam->cellw = rbg->info.cellw;
-  rbgUniformParam->cellh = rbg->info.cellh;
-  rbgUniformParam->paladdr_ = rbg->info.paladdr;
-  rbgUniformParam->pagesize = rbg->pagesize;
-  rbgUniformParam->patternshift = rbg->patternshift;
-  rbgUniformParam->planew = rbg->info.planew;
-  rbgUniformParam->pagewh = rbg->info.pagewh;
-  rbgUniformParam->patterndatasize = rbg->info.patterndatasize;
-  rbgUniformParam->supplementdata = rbg->info.supplementdata;
-  rbgUniformParam->auxmode = rbg->info.auxmode;
-  rbgUniformParam->patternwh = rbg->info.patternwh;
-  rbgUniformParam->coloroffset = rbg->info.coloroffset;
-  rbgUniformParam->transparencyenable = rbg->info.transparencyenable;
-  rbgUniformParam->specialcolormode = rbg->info.specialcolormode;
-  rbgUniformParam->specialcolorfunction = rbg->info.specialcolorfunction;
-  rbgUniformParam->specialcode = rbg->info.specialcode;
-  rbgUniformParam->colornumber = rbg->info.colornumber;
-  rbgUniformParam->window_area_mode = rbg->info.WindwAreaMode;
-  rbgUniformParam->alpha_ = (float)rbg->info.alpha / 255.0f;
-  rbgUniformParam->specialprimode = rbg->info.specialprimode;
-  rbgUniformParam->priority = rbg->info.priority;
-
-  if (Vdp2Internal.ColorMode < 2) {
-    rbgUniformParam->cram_shift = 1;
-  }
-  else {
-    rbgUniformParam->cram_shift = 2;
-  }
-  rbgUniformParam->hires_shift = rbg->info.hres_shift;
-
-  currentIndex = drawCounter&(MAX_RBG_RENDER-1);
-
-  data = d.mapMemory(rbgUniform[currentIndex].mem, 0, sizeof(*rbgUniformParam));
-  memcpy(data, rbgUniformParam, sizeof(*rbgUniformParam));
-  d.unmapMemory(rbgUniform[currentIndex].mem);
-
-  try{
-    auto c = vk::CommandBuffer(command[currentIndex]);
-    
-    vk::Result result;
-    if( drawCounter > 1 ){
-      result = d.waitForFences( commandfence[currentIndex], true, UINT64_MAX );
-      if ( result != vk::Result::eSuccess )
-      {
-          LOGE("Timeout!");
-          //exit( -1 );
-      }  
-      d.resetFences( commandfence[currentIndex] );
-    }
-
-    queue.waitIdle();
-    updateDescriptorSets(texindex);
-    c.reset();
-    c.begin({ vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-    
-    vk::ImageMemoryBarrier barrierBegin;
-    barrierBegin.oldLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-    barrierBegin.newLayout = vk::ImageLayout::eGeneral;
-    barrierBegin.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrierBegin.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrierBegin.image = tex_surface[texindex].image;
-    barrierBegin.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-    barrierBegin.subresourceRange.baseMipLevel = 0;
-    barrierBegin.subresourceRange.levelCount = 1;
-    barrierBegin.subresourceRange.baseArrayLayer = 0;
-    barrierBegin.subresourceRange.layerCount = 1;
-    barrierBegin.srcAccessMask = vk::AccessFlagBits::eShaderRead;
-    barrierBegin.dstAccessMask = vk::AccessFlags();
-
-    c.pipelineBarrier(
-      vk::PipelineStageFlagBits::eComputeShader,
-      vk::PipelineStageFlagBits::eComputeShader,
-      vk::DependencyFlags(),
-      0, nullptr,
-      0, nullptr,
-      1, &barrierBegin);
-    
-
-    c.bindPipeline(vk::PipelineBindPoint::eCompute, CurrentPipeline);
-    c.bindDescriptorSets(vk::PipelineBindPoint::eCompute, pipelineLayout, 0, descriptorSet[currentIndex], nullptr);
-    c.dispatch(tex_width_ / 16, tex_height_ / 16, 1);
-
-    vk::ImageMemoryBarrier barrier;
-    barrier.oldLayout = vk::ImageLayout::eGeneral;
-    barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.image = tex_surface[texindex].image;
-    barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-    barrier.subresourceRange.baseMipLevel = 0;
-    barrier.subresourceRange.levelCount = 1;
-    barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
-    barrier.srcAccessMask = vk::AccessFlags();
-    barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
-
-    c.pipelineBarrier(
-      vk::PipelineStageFlagBits::eComputeShader,
-      vk::PipelineStageFlagBits::eComputeShader,
-      vk::DependencyFlags(),
-      0, nullptr,
-      0, nullptr,
-      1, &barrier);
-
-    c.end();
-      
-    static const std::vector<vk::PipelineStageFlags> waitStages{ vk::PipelineStageFlagBits::eComputeShader };
-    // Submit compute commands
-    vk::SubmitInfo computeSubmitInfo;
-    computeSubmitInfo.commandBufferCount = 1;
-    computeSubmitInfo.pCommandBuffers = &c;
-    //computeSubmitInfo.waitSemaphoreCount = 1;
-    //computeSubmitInfo.pWaitSemaphores = &semaphores.ready;
-    //computeSubmitInfo.pWaitDstStageMask = waitStages.data();
-    computeSubmitInfo.signalSemaphoreCount = 1;
-    computeSubmitInfo.pSignalSemaphores = &semaphores[currentIndex].complete;
-    tex_surface[texindex].rendered = true;
-    queue.submit(computeSubmitInfo, commandfence[currentIndex]);
-  }
-  catch ( vk::SystemError & err )
-  {
-    LOGE("vk::SystemError: %s",err.what());
-  }
-  catch ( std::exception & err )
-  {
-    LOGE("std::exception: %s",err.what());
-  }
-  catch ( ... )
-  {
-    LOGE("unknown error\n");
-  }
-    
-  drawCounter++;
-  
-  //vulkan->transitionImageLayout(VkImage(tex_surface[texindex].image), 
-  //  VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-}
-
-VkImageView RBGGeneratorVulkan::getTexture(int id) {
-  return static_cast<VkImageView>(tex_surface[id].view);
-}
-
-void RBGGeneratorVulkan::onFinish() {
-
-/*
-  if (tex_surface[0].rendered) {
-    vulkan->transitionImageLayout(VkImage(tex_surface[0].image),
-      VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
-    tex_surface[0].rendered = false;
-  }
-
-  if (tex_surface[1].rendered) {
-    vulkan->transitionImageLayout(VkImage(tex_surface[1].image),
-      VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
-    tex_surface[1].rendered = false;
-  }
-*/
-}
-
-#endif
+   
+};
 
 RBGGenerator * RBGGenerator::instance_ = nullptr;
 
@@ -4453,25 +2614,25 @@ extern "C" {
     if (_Ygl->rbg_use_compute_shader == 0) return;
 
     RBGGenerator * instance = RBGGenerator::getInstance();
-    instance->init(width, height);
+    instance->init( width, height);
   }
   void RBGGenerator_resize(int width, int height) {
     if (_Ygl->rbg_use_compute_shader == 0) return;
 
-    RBGGenerator * instance = RBGGenerator::getInstance();
-    instance->resize(width, height);
+	  RBGGenerator * instance = RBGGenerator::getInstance();
+	  instance->resize(width, height);
   }
-  void RBGGenerator_update(RBGDrawInfo * rbg) {
+  void RBGGenerator_update(RBGDrawInfo * rbg ) {
     if (_Ygl->rbg_use_compute_shader == 0) return;
 
     RBGGenerator * instance = RBGGenerator::getInstance();
     instance->update(rbg);
   }
-  GLuint RBGGenerator_getTexture(int id) {
+  GLuint RBGGenerator_getTexture( int id ) {
     if (_Ygl->rbg_use_compute_shader == 0) return 0;
 
     RBGGenerator * instance = RBGGenerator::getInstance();
-    return instance->getTexture(id);
+    return instance->getTexture( id );
   }
   void RBGGenerator_onFinish() {
 

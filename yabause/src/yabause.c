@@ -67,7 +67,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 #include "vdp2.h"
 #include "yui.h"
 #include "bios.h"
-//#include "movie.h"
+#include "movie.h"
 #include "osdcore.h"
 #ifdef HAVE_LIBSDL
 #if defined(__APPLE__) || defined(GEKKO)
@@ -117,6 +117,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 
 #include <inttypes.h>
 
+extern void SH2HandleInterrupts(SH2_struct *context);
+
 //////////////////////////////////////////////////////////////////////////////
 
 yabsys_struct yabsys;
@@ -131,8 +133,6 @@ u32 saved_scsp_cycles = 0;//fixed point
 volatile u64 saved_m68k_cycles = 0;//fixed point
 static u32 g_scsp_main_mode = 1;
 
-extern char * getLastShaderError();
-
 //////////////////////////////////////////////////////////////////////////////
 
 #ifndef NO_CLI
@@ -145,6 +145,7 @@ void print_usage(const char *program_name) {
           "Usage: %s [OPTIONS]...\n", program_name);
    printf("   -h         --help                 Print help and exit\n");
    printf("   -b STRING  --bios=STRING          bios file\n");
+   printf("   -l STRING  --language=STRING      english, deutsch, french, spanish,\n                                     italian, japanese\n");
    printf("   -i STRING  --iso=STRING           iso/cue file\n");
    printf("   -c STRING  --cdrom=STRING         cdrom path\n");
    printf("   -ns        --nosound              turn sound off\n");
@@ -184,24 +185,15 @@ YabEventQueue * q_scsp_finish;
 
 int YabauseInit(yabauseinit_struct *init)
 {
-
-  YabThreadInit();
-
-  if( init->use_cpu_affinity ){
-   YabThreadSetCurrentThreadAffinityMask(YabThreadGetFastestCpuIndex());
-  }
-
-  yabsys.use_cpu_affinity = init->use_cpu_affinity;
-
-  yabsys.use_sh2_cache = init->use_sh2_cache;
-
   q_scsp_frame_start = YabThreadCreateQueue(1);
   q_scsp_finish = YabThreadCreateQueue(1);
   setM68kCounter(0);
 
+#if !(defined(__LIBRETRO__))
   if( init->playRecordPath && strlen(init->playRecordPath) != 0) {
     PlayRecorder_setPlayMode(init->playRecordPath,init);
   }
+#endif
 
    yabsys.frame_count = 0;
    yabsys.sync_shift = init->sync_shift;
@@ -281,11 +273,7 @@ int YabauseInit(yabauseinit_struct *init)
 
    if (VideoInit(init->vidcoretype) != 0)
    {
-      if(getLastShaderError() != NULL){
-         YabSetError(YAB_ERR_CANNOTINIT, getLastShaderError() );
-      }else{
-         YabSetError(YAB_ERR_CANNOTINIT, _("Video"));
-      }
+      YabSetError(YAB_ERR_CANNOTINIT, _("Video"));
       return -1;
    }
 
@@ -342,7 +330,7 @@ int YabauseInit(yabauseinit_struct *init)
       return -1;
    }
 
-   if (SmpcInit(init->regionid, init->clocksync, init->basetime) != 0)
+   if (SmpcInit(init->regionid, init->syslanguageid, init->clocksync, init->basetime) != 0)
    {
       YabSetError(YAB_ERR_CANNOTINIT, _("SMPC"));
       return -1;
@@ -360,9 +348,6 @@ int YabauseInit(yabauseinit_struct *init)
 
    if (init->frameskip)
       EnableAutoFrameSkip();
-
-   VDP2SetFrameLimit(init->framelimit);
-
 
 #ifdef YAB_PORT_OSD
    OSDChangeCore(init->osdcoretype);
@@ -488,7 +473,6 @@ void YabFlushBackups(void)
 
 void YabauseDeInit(void) {
    
-  OSDDeInit();
    Vdp2DeInit();
    Vdp1DeInit();
    
@@ -662,7 +646,10 @@ u64 g_m68K_dec_cycle = 0;
 int YabauseEmulate(void) {
    int oneframeexec = 0;
    yabsys.frame_count++;
+
+#if !defined(__LIBRETRO__)
    PlayRecorder_proc(yabsys.frame_count);
+#endif
 
    const u32 cyclesinc =
       yabsys.DecilineMode ? yabsys.DecilineStop : yabsys.DecilineStop * 10;
@@ -712,7 +699,7 @@ int YabauseEmulate(void) {
       }
    }
 
-   //DoMovie();
+   DoMovie();
 
    #if defined(SH2_DYNAREC)
    if(SH2Core->id==2) {
@@ -733,7 +720,6 @@ int YabauseEmulate(void) {
    SH2OnFrame(MSH2);
    SH2OnFrame(SSH2);
    u64 cpu_emutime = 0;
-   Vdp2UpdateHv(0,0);
    while (!oneframeexec)
    {
       PROFILE_START("Total Emulation");
@@ -747,7 +733,7 @@ int YabauseEmulate(void) {
       yabsys.SH2CycleFrac &= ((YABSYS_TIMING_MASK << 1) | 1);
 
 #ifdef YAB_STATICS
-      s64 current_cpu_clock = YabauseGetTicks();
+      u64 current_cpu_clock = YabauseGetTicks();
 #endif
       if( sync_shift != 0 ){
         u32 i;
@@ -775,8 +761,6 @@ int YabauseEmulate(void) {
       cpu_emutime += (YabauseGetTicks() - current_cpu_clock) * 1000000 / yabsys.tickfreq;
 #endif
        yabsys.DecilineCount++;
-       //Vdp2UpdateHv(yabsys.DecilineCount,yabsys.LineCount);
-       
        if(yabsys.DecilineCount == 9) {
          // HBlankIN
          PROFILE_START("hblankin");
@@ -911,19 +895,6 @@ int YabauseEmulate(void) {
 #if DYNAREC_DEVMIYAX
    if (SH2Core->id == 3) SH2DynShowSttaics(MSH2, SSH2);
 #endif
-
-#ifdef CACHE_STATICS
-   DebugLog( "%d: MSH2 hit:%d, miss:%d, wirte:%d", yabsys.frame_count, MSH2->onchip.cache.read_hit_count, MSH2->onchip.cache.read_miss_count, MSH2->onchip.cache.write_count );
-   MSH2->onchip.cache.read_hit_count = 0;
-   MSH2->onchip.cache.read_miss_count = 0;
-   MSH2->onchip.cache.write_count = 0;
-
-   DebugLog( "%d: SSH2 hit:%d, miss:%d, wirte:%d", yabsys.frame_count, SSH2->onchip.cache.read_hit_count, SSH2->onchip.cache.read_miss_count, SSH2->onchip.cache.write_count );
-   SSH2->onchip.cache.read_hit_count = 0;
-   SSH2->onchip.cache.read_miss_count = 0;
-   SSH2->onchip.cache.write_count = 0;
-#endif
-
    return 0;
 }
 
@@ -965,15 +936,6 @@ void YabauseStartSlave(void) {
       MappedMemoryWriteLong(0xFFFFFFA0, 0x0000006D, NULL); // VCRDMA0
       MappedMemoryWriteLong(0xFFFFFF0C, 0x0000006E, NULL); // VCRDIV
       MappedMemoryWriteLong(0xFFFFFE10, 0x00000081, NULL); // TIER
-
-      MappedMemoryWriteByte(0xfffffe92, 0x00, NULL); // CCR
-      MappedMemoryWriteByte(0xfffffe92, 0x40, NULL); // CCR
-      MappedMemoryWriteByte(0xfffffe92, 0x80, NULL); // CCR
-      MappedMemoryWriteByte(0xfffffe92, 0x01, NULL); // CCR
-
-      SSH2->cycles = 0;
-      SH2Core->AddCycle(SSH2,2000);
-
       CurrentSH2 = MSH2;
 
       SH2GetRegisters(SSH2, &SSH2->regs);
@@ -1007,13 +969,13 @@ void YabauseStopSlave(void) {
 
 //////////////////////////////////////////////////////////////////////////////
 
-s64 YabauseGetTicks(void) {
+u64 YabauseGetTicks(void) {
 #ifdef WIN32
-  LARGE_INTEGER ticks;
-   QueryPerformanceCounter(&ticks);
-   return (s64)ticks.QuadPart;
+   u64 ticks;
+   QueryPerformanceCounter((LARGE_INTEGER *)&ticks);
+   return ticks;
 #elif defined(_arch_dreamcast)
-   return (s64) timer_ms_gettime64();
+   return (u64) timer_ms_gettime64();
 #elif defined(GEKKO)  
    return gettime();
 #elif defined(PSP)
@@ -1021,13 +983,13 @@ s64 YabauseGetTicks(void) {
 #elif defined(ANDROID)
 	struct timespec clock_time;
 	clock_gettime(CLOCK_REALTIME , &clock_time);
-	return (s64)clock_time.tv_sec * 1000000 + clock_time.tv_nsec/1000;
+	return (u64)clock_time.tv_sec * 1000000 + clock_time.tv_nsec/1000;
 #elif defined(HAVE_GETTIMEOFDAY)
    struct timeval tv;
    gettimeofday(&tv, NULL);
-   return (s64)tv.tv_sec * 1000000 + tv.tv_usec;
+   return (u64)tv.tv_sec * 1000000 + tv.tv_usec;
 #elif defined(HAVE_LIBSDL)
-   return (s64)SDL_GetTicks();
+   return (u64)SDL_GetTicks();
 #endif
 }
 
@@ -1052,7 +1014,7 @@ void YabauseSetVideoFormat(int type) {
    yabsys.tickfreq = 1000;
 #endif
    yabsys.OneFrameTime =
-      type ? (yabsys.tickfreq / 50) : (yabsys.tickfreq * 10000 / 600000);
+      type ? (yabsys.tickfreq / 50) : (yabsys.tickfreq * 1001 / 60000);
    Vdp2Regs->TVSTAT = Vdp2Regs->TVSTAT | (type & 0x1);
    ScspChangeVideoFormat(type);
    YabauseChangeTiming(yabsys.CurSH2FreqType);
@@ -1381,11 +1343,6 @@ int YabauseQuickLoadGame(void)
       Vdp2ColorRamWriteWord(0x1C, 0xF39C);
       Vdp2ColorRamWriteWord(0x1E, 0xFBDE);
       Vdp2ColorRamWriteWord(0xFF, 0x0000);
-
-      // Enable Cache
-      CurrentSH2 = MSH2;
-      MappedMemoryWriteByte(0xfffffe92, 0x11, NULL); // CCR
-
    }
    else
    {
@@ -1403,11 +1360,8 @@ int YabauseQuickLoadGame(void)
    return 0;
 }
 
-#if !defined(IOS)
-#include <malloc.h>
-#endif
-
 // non standard function
+#include <malloc.h>
 char* strdup_ (const char* s)
 {
   size_t slen = strlen(s);

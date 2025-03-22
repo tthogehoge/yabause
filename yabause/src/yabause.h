@@ -57,6 +57,7 @@ typedef struct
    int cdcoretype;
    int carttype;
    u8 regionid;
+   int syslanguageid;
    const char *biospath;
    const char *cdpath;
    const char *ssfpath;
@@ -67,7 +68,6 @@ typedef struct
 	const char *modemport;
    int videoformattype;
    int frameskip;
-   int framelimit; // 0 .. 60Hz, 1 .. no limit, 2 .. 2x(120Hz)
    int clocksync;  // 1 = sync internal clock to emulation, 0 = realtime clock
    u32 basetime;   // Initial time in clocksync mode (0 = start w/ system time)
    int usethreads;
@@ -87,8 +87,6 @@ typedef struct
    int scsp_main_mode;
    u32 sync_shift;
    const char *playRecordPath;
-   int use_cpu_affinity;
-   int use_sh2_cache;
 } yabauseinit_struct;
 
 #define CLKTYPE_26MHZ           0
@@ -112,7 +110,7 @@ void YabauseResetButton(void);
 int YabauseExec(void);
 void YabauseStartSlave(void);
 void YabauseStopSlave(void);
-s64 YabauseGetTicks(void);
+u64 YabauseGetTicks(void);
 void YabauseSetVideoFormat(int type);
 void YabauseSpeedySetup(void);
 int YabauseQuickLoadGame(void);
@@ -145,9 +143,6 @@ typedef struct
    u32 frame_count;
    int extend_backup;
    u32 sync_shift;
-   int use_cpu_affinity;
-   int use_sh2_cache;
-   int Hcount;
 } yabsys_struct;
 
 extern yabsys_struct yabsys;
@@ -166,9 +161,7 @@ typedef enum {
   VDP_SETTING_RESOLUTION_MODE,
   VDP_SETTING_RBG_RESOLUTION_MODE,
   VDP_SETTING_RBG_USE_COMPUTESHADER,
-  VDP_SETTING_ROTATE_SCREEN,
-  VDP_SETTING_FRAMELIMIT_MODE,
-  VDP_SETTING_ASPECT_RATE_MODE
+  VDP_SETTING_ROTATE_SCREEN
 } enSettings;
 
 int VideoSetSetting(int type, int value);

@@ -17,7 +17,7 @@ Preference::Preference( const std::string & filename ){
   }
 
   std::string home_dir = getenv("HOME");
-  home_dir += "/.yabasanshiro/";
+  home_dir = "/storage/.config/yabasanshiro/";
 
   this->filename = home_dir + input_trace_filename + ".config";
 

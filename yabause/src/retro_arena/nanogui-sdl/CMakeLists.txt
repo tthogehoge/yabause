@@ -127,7 +127,7 @@ endforeach()
 # Run bin2c on resource files
 add_custom_command(
   OUTPUT nanogui_resources.cpp nanogui_resources.h
-  COMMAND ./bin2c ARGS ${bin2c_cmdline}
+  COMMAND /home/takashi/distribution/build.ROCKNIX-RK3566.aarch64/yabasanshiro-sa-a40dace1ae0af3ebd45848549fdf396f40e3930f/bin2c_host ARGS ${bin2c_cmdline}
   DEPENDS bin2c ${resources}
   COMMENT "Running bin2c"
   PRE_BUILD VERBATIM)

@@ -266,8 +266,6 @@ extern "C" {
     int _command_execlock;
     int _delay_irq;
 
-    u8 nextStatus;
-
   } Cs2;
 
   typedef struct {
