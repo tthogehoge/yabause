@@ -556,15 +556,11 @@ int main(int argc, char** argv)
       }
 
       else if(e.type == evToggleFps ){
-	      /*
         if( g_EnagleFPS == 0 ){
           g_EnagleFPS = 1;
         }else{
           g_EnagleFPS = 0;
         }
-	*/
-	      extern void ToggleNBG2();
-	      ToggleNBG2();
         hideMenuScreen();         
       }
 
