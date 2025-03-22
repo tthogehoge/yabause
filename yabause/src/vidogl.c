@@ -6431,9 +6431,9 @@ static void Vdp2DrawBackScreen(void)
       for (int i = 0; i < vdp2height; i++) {
         u8 r, g, b, a;
         dot = T1ReadWord(Vdp2Ram, (scrAddr + 2 * i));
-        r = Y_MAX( ((dot & 0x1F) << 3) + info.cor, 0 );
-        g = Y_MAX( (((dot & 0x3E0) >> 5) << 3) + info.cog , 0);
-        b = Y_MAX( (((dot & 0x7C00) >> 10) << 3) + info.cob, 0 );
+        r = Y_MIN(Y_MAX( ((dot & 0x1F) << 3) + info.cor, 0 ),255);
+        g = Y_MIN(Y_MAX( (((dot & 0x3E0) >> 5) << 3) + info.cog , 0),255);
+        b = Y_MIN(Y_MAX( (((dot & 0x7C00) >> 10) << 3) + info.cob, 0 ),255);
         if (fixVdp2Regs->CCCTL & 0x2) {
           a = 0xFF;
         }
