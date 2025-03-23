@@ -2047,6 +2047,39 @@ int YglInit(int width, int height, unsigned int depth) {
   return 0;
 }
 
+int yglProgramClear()
+{
+  int i;
+  int j;
+  int clear = 0;
+  for(i = 0;i < _Ygl->depth+1 ;i++) {
+    for(j = 0;j < _Ygl->levels[i].prgcount; j++) {
+			if (_Ygl->levels[i].prg[j].quads)
+			free(_Ygl->levels[i].prg[j].quads);
+			if (_Ygl->levels[i].prg[j].textcoords)
+			free(_Ygl->levels[i].prg[j].textcoords);
+			if (_Ygl->levels[i].prg[j].vertexAttribute)
+			free(_Ygl->levels[i].prg[j].vertexAttribute);
+    }
+    free(_Ygl->levels[i].prg);
+    _Ygl->levels[i].prgcount = 1;
+    _Ygl->levels[i].prg = (YglProgram*)malloc(sizeof(YglProgram)*_Ygl->levels[i].prgcount);
+    memset(  _Ygl->levels[i].prg,0,sizeof(YglProgram)*_Ygl->levels[i].prgcount);
+    if (_Ygl->levels[i].prg == NULL){ 
+      return -1; 
+    }
+    for(j = 0;j < _Ygl->levels[i].prgcount; j++) {
+      _Ygl->levels[i].prg[j].prg=0;
+      _Ygl->levels[i].prg[j].currentQuad = 0;
+      _Ygl->levels[i].prg[j].maxQuad = 12 * 2000;
+      if ((_Ygl->levels[i].prg[j].quads = (float *)malloc(_Ygl->levels[i].prg[j].maxQuad * sizeof(float))) == NULL){ return -1; }
+      if ((_Ygl->levels[i].prg[j].textcoords = (float *)malloc(_Ygl->levels[i].prg[j].maxQuad * sizeof(float) * 2)) == NULL){ return -1; }
+      if ((_Ygl->levels[i].prg[j].vertexAttribute = (float *)malloc(_Ygl->levels[i].prg[j].maxQuad * sizeof(float) * 2)) == NULL){ return -1; }
+    }
+  }
+  YglCacheReset(_Ygl->texture_manager);
+}
+
 //////////////////////////////////////////////////////////////////////////////
 void YglDeInit(void) {
    unsigned int i,j;
@@ -4399,6 +4432,7 @@ void YglRender(void) {
   else{
     
   }
+  yglProgramClear();
 render_finish:
   glViewport(_Ygl->originx, _Ygl->originy, GlWidth, GlHeight);
   glUseProgram(0);
