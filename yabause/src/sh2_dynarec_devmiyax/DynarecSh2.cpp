@@ -721,7 +721,9 @@ x86op_desc asm_list[] =
 
 void CompileBlocks::Init()
 {
-  dCode = (Block*)ALLOCATE(sizeof(Block)*NUMOFBLOCKS);
+  if(dCode==NULL){
+    dCode = (Block*)ALLOCATE(sizeof(Block)*NUMOFBLOCKS);
+  }
   memset((void*)dCode, 0, sizeof(Block)*NUMOFBLOCKS);
 
   memset(LookupTable, 0, sizeof(LookupTable));
