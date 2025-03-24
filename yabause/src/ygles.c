@@ -4432,7 +4432,7 @@ void YglRender(void) {
   else{
     
   }
-  yglProgramClear();
+  //yglProgramClear();
 render_finish:
   glViewport(_Ygl->originx, _Ygl->originy, GlWidth, GlHeight);
   glUseProgram(0);
