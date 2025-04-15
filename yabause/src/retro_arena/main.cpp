@@ -254,7 +254,7 @@ int yabauseinit()
 #if defined(__JETSON__)  
   yinit.scsp_main_mode = 0;
 #else
-  yinit.scsp_main_mode = 1;
+  yinit.scsp_main_mode = 0;
 #endif
   yinit.rbg_resolution_mode = pre.getInt( "Rotate screen resolution" ,g_rotate_resolution_mode);
 #if defined(__JETSON__)
