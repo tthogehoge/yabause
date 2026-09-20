@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 #include <map>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include <sys/types.h>
 #include <stdint.h>
@@ -207,6 +208,8 @@ private:
     Init();
 #ifdef SET_DIRTY
     LookupParentTable = new addrs[LUTSIZE >> 1];
+    // one bit per LookupParentTable slot, all-zero (= "definitely empty") to start
+    dirtyMaybeNonEmpty.assign(((LUTSIZE >> 1) + 63) / 64, 0);
 #else
     LookupParentTable = NULL;
 #endif
@@ -242,16 +245,44 @@ public:
   Block* LookupTableC[LUTSIZE_C>>1];
   Block * dCode;
   
+  // Coarse "might not be empty" filter for LookupParentTable, kept in sync
+  // at every place that adds or removes elements from it (see EmmitCode's
+  // push_back sites and setDirty's remove/clear sites). This exists purely
+  // to skip the 12MB LookupParentTable array (and its cache-miss cost) for
+  // the overwhelmingly common case where the address has no dependent
+  // compiled blocks at all.
+  //
+  // Invariant that must NEVER be violated: a 0 bit means the list at that
+  // index is DEFINITELY empty. A 1 bit only means "maybe non-empty" - a
+  // stale 1 (list actually empty) just costs one harmless extra check
+  // inside setDirty(); a stale 0 (list actually non-empty) would make
+  // setDirty() silently skip a real invalidation, which is the one outcome
+  // that must be avoided at all costs. When in doubt, set the bit, don't
+  // clear it.
+  std::vector<uint64_t> dirtyMaybeNonEmpty;
+
+  inline bool ParentMaybeNonEmpty(u32 idx) const {
+    return (dirtyMaybeNonEmpty[idx >> 6] >> (idx & 63)) & 1ull;
+  }
+  inline void SetParentMaybeNonEmpty(u32 idx) {
+    dirtyMaybeNonEmpty[idx >> 6] |= (1ull << (idx & 63));
+  }
+  inline void ClearParentMaybeNonEmptyIfEmpty(u32 idx) {
+    if (LookupParentTable[idx].empty())
+      dirtyMaybeNonEmpty[idx >> 6] &= ~(1ull << (idx & 63));
+  }
   std::unordered_map<u32, int> self_modify_block;
 
   inline void setDirty(u32 addr) {
     addr = adress_mask(addr);
-    if (LookupParentTable[addr].size() == 0) return;
+    if (!ParentMaybeNonEmpty(addr)) return;      // fast 64KB bitmap check first
+    if (LookupParentTable[addr].size() == 0) return;  // safety net kept during rollout
     for (auto it = LookupParentTable[addr].begin(); it != LookupParentTable[addr].end(); it++) {
       if (LookupTable[*it] != NULL) {
         for (u32 i = adress_mask(LookupTable[*it]->b_addr) ; i <= adress_mask(LookupTable[*it]->e_addr); i++ ) {
           if (i != addr) {
             LookupParentTable[i].remove(*it);
+            ClearParentMaybeNonEmptyIfEmpty(i);
           }
         }
          LOG("%d %08X is removed", LookupTable[*it]->id, (*it) << 1);
@@ -261,6 +292,7 @@ public:
       }
     }
     LookupParentTable[addr].clear();
+    ClearParentMaybeNonEmptyIfEmpty(addr);
   }
 
   void Init();

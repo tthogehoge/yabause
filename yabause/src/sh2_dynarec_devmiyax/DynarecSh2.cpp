@@ -948,6 +948,7 @@ int CompileBlocks::EmmitCode(Block *page, addrs * ParentT )
       u32 keepaddr = adress_mask(addr);
       ParentT[keepaddr].push_back(adress_mask(start_addr));
       ParentT[keepaddr].unique();
+      SetParentMaybeNonEmpty(keepaddr);
     }
 #endif
 
@@ -1126,6 +1127,7 @@ int CompileBlocks::EmmitCode(Block *page, addrs * ParentT )
         u32 keepaddr = adress_mask(addr);
         ParentT[keepaddr].push_back(adress_mask(start_addr));
         ParentT[keepaddr].unique();
+        SetParentMaybeNonEmpty(keepaddr);
       }
 #endif
       addr += 2;
