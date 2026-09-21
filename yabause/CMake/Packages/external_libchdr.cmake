@@ -24,7 +24,9 @@ elseif(IOS)
   )
 
 else()
-  set(ADDITIONAL_CMAKE_ARGS "")
+  set( ADDITIONAL_CMAKE_ARGS 
+    -DCMAKE_TOOLCHAIN_FILE=/home/takashi/work/distribution/build.ROCKNIX-RK3566.aarch64/toolchain/etc/cmake-aarch64-rocknix-linux-gnu.conf
+  )
 endif()
 
 ExternalProject_Add(
@@ -36,7 +38,8 @@ ExternalProject_Add(
               -DCMAKE_BUILD_TYPE:STRING=Release 
               -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
               -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-              ${ADDITIONAL_CMAKE_ARGS}
+              -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+	      -DCMAKE_TOOLCHAIN_FILE=/home/takashi/work/distribution/build.ROCKNIX-RK3566.aarch64/toolchain/etc/cmake-aarch64-rocknix-linux-gnu.conf
 )
 
 ExternalProject_Get_Property(libchdr SOURCE_DIR)

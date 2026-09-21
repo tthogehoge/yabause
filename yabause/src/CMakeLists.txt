@@ -888,6 +888,8 @@ endif()
 option(YAB_OPTIMIZED_DMA "Use optimized DMA when possible" OFF)
 if (YAB_OPTIMIZED_DMA)
 	add_definitions(-DOPTIMIZED_DMA=1)
+else()
+	add_definitions(-DOPTIMIZED_DMA=1)
 endif()
 
 # SH2 Trace
