@@ -119,6 +119,73 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 
 extern void SH2HandleInterrupts(SH2_struct *context);
 
+enum{
+        SW_SH2,
+        SW_HBIN,
+        SW_HBOUT,
+        SW_VBIN,
+        SW_VBOUT,
+        SW_SCSP,
+        SW_SCU,
+        SW_68K,
+        SW_SMPC,
+        SW_CDB,
+        SW_SYNC,
+        SW_MAX
+};
+static const char* swname[]={
+        "SW_SH2",
+        "SW_HBIN",
+        "SW_HBOUT",
+        "SW_VBIN",
+        "SW_VBOUT",
+        "SW_SCSP",
+        "SW_SCU",
+        "SW_68K",
+        "SW_SMPC",
+        "SW_CDB",
+        "SW_SYNC",
+        "SW_MAX"
+};
+static u64 swbuff_[SW_MAX];
+static u64 start_time_ = 0;
+static int sw_flag = 0; 
+static int counter = 0;
+
+// #define KEISOKU
+#ifdef KEISOKU
+#define SW(n) for(tick_start();sw_flag;tick_end(n)) 
+#else
+#define SW(n) if(1)
+#endif
+
+static void tick_start()
+{
+        sw_flag=1;
+        start_time_ = YabauseGetTicks();
+}
+static void tick_end(int n)
+{
+        u64 diff = YabauseGetTicks() - start_time_;
+        swbuff_[n] += diff;
+        sw_flag=0;
+}
+static void tick_clear()
+{
+        for(int i=0;i<SW_MAX;i++){
+                swbuff_[i] = 0;
+        }
+}
+static void tick_show()
+{
+        float sum = 0;
+        for(int i=0;i<SW_MAX;i++){
+                printf("%d:%s: %f\n", i, swname[i], swbuff_[i]/60000.0);
+                sum += swbuff_[i]/60000.0;
+        }
+        printf("Total: %f\n", sum);
+} 
+
 //////////////////////////////////////////////////////////////////////////////
 
 yabsys_struct yabsys;
@@ -642,7 +709,6 @@ void SyncCPUtoSCSP();
 u64 getM68KCounter();
 u64 g_m68K_dec_cycle = 0;
 
-
 int YabauseEmulate(void) {
    int oneframeexec = 0;
    yabsys.frame_count++;
@@ -720,6 +786,7 @@ int YabauseEmulate(void) {
    SH2OnFrame(MSH2);
    SH2OnFrame(SSH2);
    u64 cpu_emutime = 0;
+   int scucount = 0;
    while (!oneframeexec)
    {
       PROFILE_START("Total Emulation");
@@ -728,6 +795,7 @@ int YabauseEmulate(void) {
       // to SH2Exec(), we always compute an even number of cycles here
       // and leave any odd remainder in SH2CycleFrac.
       u32 sh2cycles;
+      SW(SW_SH2){
       yabsys.SH2CycleFrac += cyclesinc;
       sh2cycles = (yabsys.SH2CycleFrac >> (YABSYS_TIMING_BITS + 1)) << 1;
       yabsys.SH2CycleFrac &= ((YABSYS_TIMING_MASK << 1) | 1);
@@ -756,7 +824,9 @@ int YabauseEmulate(void) {
         if (yabsys.IsSSH2Running)
           SH2Exec(SSH2, sh2cycles);
       }
+      }
 
+      SW(SW_HBIN){
 #ifdef YAB_STATICS
       cpu_emutime += (YabauseGetTicks() - current_cpu_clock) * 1000000 / yabsys.tickfreq;
 #endif
@@ -804,23 +874,36 @@ int YabauseEmulate(void) {
 
          }
       }
+      }
 
-      PROFILE_START("SCU");
-      ScuExec(sh2cycles >> 1);
-      PROFILE_STOP("SCU");
+      scucount+= (sh2cycles >> 1);
+      if(oneframeexec) {
+         SW(SW_SCU){
+         PROFILE_START("SCU");
+         ScuExec(scucount);
+         PROFILE_STOP("SCU");
+         }
+      }
+      SW(SW_68K){
       PROFILE_START("68K");
       M68KSync();  // Wait for the previous iteration to finish
       PROFILE_STOP("68K");
+      }
 
+      SW(SW_SMPC){
       yabsys.UsecFrac += usecinc;
       PROFILE_START("SMPC");
       SmpcExec(yabsys.UsecFrac >> YABSYS_TIMING_BITS);
       PROFILE_STOP("SMPC");
+      }
+      SW(SW_CDB){
       PROFILE_START("CDB");
       Cs2Exec(yabsys.UsecFrac >> YABSYS_TIMING_BITS);
       PROFILE_STOP("CDB");
       yabsys.UsecFrac &= YABSYS_TIMING_MASK;
+      }
       
+      SW(SW_SYNC){
 #if !defined(ASYNC_SCSP)
       if(!use_new_scsp)
       {
@@ -854,6 +937,7 @@ int YabauseEmulate(void) {
         saved_m68k_cycles  += m68k_cycles_per_deciline;
         setM68kCounter(saved_m68k_cycles);
 #endif
+      }
       }
       PROFILE_STOP("Total Emulation");
    }
@@ -894,6 +978,14 @@ int YabauseEmulate(void) {
 #endif
 #if DYNAREC_DEVMIYAX
    if (SH2Core->id == 3) SH2DynShowSttaics(MSH2, SSH2);
+#endif
+#ifdef KEISOKU
+   counter++;
+   if(counter==60){
+     tick_show();
+     tick_clear();
+     counter=0;
+   }
 #endif
    return 0;
 }
