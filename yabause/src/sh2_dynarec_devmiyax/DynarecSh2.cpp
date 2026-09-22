@@ -1402,19 +1402,22 @@ inline int DynarecSh2::Execute(){
 
   Block * pBlock = NULL;
 
+#if defined(DEBUG_CPU) || defined(EXECUTE_STAT)
   m_pCompiler->exec_count_++;
+#endif
 #if defined(EXECUTE_STAT)
   m_pCompiler->setShowCode( is_slave_ );
 #endif
 //#endif
 
-  if ((GET_PC() & 0xFF000000) == 0xC0000000)
+  const u32 pc = GET_PC();
+  if ((pc & 0xFF000000) == 0xC0000000)
   {
-    pBlock = m_pCompiler->LookupTableC[(GET_PC() & LUTMASK_C) >> 1];
+    pBlock = m_pCompiler->LookupTableC[(pc & LUTMASK_C) >> 1];
     if (pBlock == NULL)
     {
-      pBlock = m_pCompiler->CompileBlock(GET_PC());
-      m_pCompiler->LookupTableC[(GET_PC() & LUTMASK_C) >> 1] = pBlock;
+        pBlock = m_pCompiler->CompileBlock(pc);
+      m_pCompiler->LookupTableC[(pc & LUTMASK_C) >> 1] = pBlock;
       if (pBlock == NULL) {
         Undecoded();
         return IN_INFINITY_LOOP;
@@ -1423,22 +1426,22 @@ inline int DynarecSh2::Execute(){
   }
   else {
 
-    switch (GET_PC() & 0x0FF00000)
+    switch (pc & 0x0FF00000)
     {
 
       // ROM
     case 0x00000000:
       if (yabsys.extend_backup) {
         const u32 bupaddr = 0x0007d600; // MappedMemoryReadLong(0x06000358);
-        if (GET_PC() == bupaddr) {
+        if (pc == bupaddr) {
           LOG("BUP_Init");
           BiosBUPInit(ctx_);
           yabsys.extend_backup = 2;
           return IN_INFINITY_LOOP;
         }
         else if (yabsys.extend_backup == 2 &&
-          GET_PC() >= 0x0380 &&
-          GET_PC() <= 0x03A8) {
+          pc >= 0x0380 &&
+          pc <= 0x03A8) {
           BiosHandleFunc(ctx_);
           return IN_INFINITY_LOOP;
         }
@@ -1449,29 +1452,29 @@ inline int DynarecSh2::Execute(){
          memcycle_ += ctx_->cycles;
         return 0;
       }
-      pBlock = m_pCompiler->LookupTableRom[(GET_PC() & LUTMASK_ROM) >> 1];
+      pBlock = m_pCompiler->LookupTableRom[(pc & LUTMASK_ROM) >> 1];
       if (pBlock == NULL)
       {
-        pBlock = m_pCompiler->CompileBlock(GET_PC());
+       pBlock = m_pCompiler->CompileBlock(pc);
         if (pBlock == NULL) {
           Undecoded();
           return IN_INFINITY_LOOP;
         }
-        m_pCompiler->LookupTableRom[(GET_PC() & LUTMASK_ROM) >> 1] = pBlock;
+        m_pCompiler->LookupTableRom[(pc & LUTMASK_ROM) >> 1] = pBlock;
       }
       break;
 
       // Low Memory
     case 0x00200000:
-      pBlock = m_pCompiler->LookupTableLow[(GET_PC() & LUTMASK_LOW) >> 1];
+      pBlock = m_pCompiler->LookupTableLow[(pc & LUTMASK_LOW) >> 1];
       if (pBlock == NULL)
       {
-        pBlock = m_pCompiler->CompileBlock(GET_PC());
+        pBlock = m_pCompiler->CompileBlock(pc);
         if (pBlock == NULL) {
           Undecoded();
           return IN_INFINITY_LOOP;
         }
-        m_pCompiler->LookupTableLow[(GET_PC() & LUTMASK_LOW) >> 1] = pBlock;
+        m_pCompiler->LookupTableLow[(pc & LUTMASK_LOW) >> 1] = pBlock;
       }
       break;
 
@@ -1479,21 +1482,21 @@ inline int DynarecSh2::Execute(){
     case 0x06000000:
       /*case 0x06100000:*/
 
-      pBlock = m_pCompiler->LookupTable[(GET_PC() & LUTMASK) >> 1];
+      pBlock = m_pCompiler->LookupTable[(pc & LUTMASK) >> 1];
       if (pBlock == NULL)
       {
-        pBlock = m_pCompiler->CompileBlock(GET_PC(), m_pCompiler->LookupParentTable);
+        pBlock = m_pCompiler->CompileBlock(pc, m_pCompiler->LookupParentTable);
         if (pBlock == NULL) {
           Undecoded();
           return IN_INFINITY_LOOP;
         }
-        m_pCompiler->LookupTable[(GET_PC() & LUTMASK) >> 1] = pBlock;
+        m_pCompiler->LookupTable[(pc & LUTMASK) >> 1] = pBlock;
       }
       break;
 
       // Cache
     default:
-      pBlock = m_pCompiler->CompileBlock(GET_PC());
+      pBlock = m_pCompiler->CompileBlock(pc);
       if (pBlock == NULL) {
         Undecoded();
         return IN_INFINITY_LOOP;
@@ -1518,10 +1521,10 @@ inline int DynarecSh2::Execute(){
 //    logenable_ = true;
 //  }
 //  if (logenable_) {
-//    LOG("[%s] dynaExecute start %08X %08X", (is_slave_ == false) ? "M" : "S", GET_PC(), GET_PR());
+//    LOG("[%s] dynaExecute start %08X %08X", (is_slave_ == false) ? "M" : "S", pc, GET_PR());
 //  }
 #if defined(DEBUG_CPU) || defined(EXECUTE_STAT)
-    u32 prepc = GET_PC();
+    u32 prepc = pc;
   if (is_slave_) { //statics_trigger_ == COLLECTING) {
     u64 pretime = YabauseGetTicks();
     ((dynaFunc)((void*)(pBlock->code)))(m_pDynaSh2);
@@ -1741,4 +1744,3 @@ void DynarecSh2::ResetCompileInfo() {
     i++;
   }
 }
-
