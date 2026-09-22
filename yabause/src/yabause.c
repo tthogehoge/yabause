@@ -876,6 +876,7 @@ int YabauseEmulate(void) {
       }
       }
 
+#if 0
       scucount+= (sh2cycles >> 1);
       if(oneframeexec) {
          SW(SW_SCU){
@@ -884,6 +885,13 @@ int YabauseEmulate(void) {
          PROFILE_STOP("SCU");
          }
       }
+#else
+      SW(SW_SCU){
+      PROFILE_START("SCU");
+      ScuExec(sh2cycles >> 1);
+      PROFILE_STOP("SCU");
+      }
+#endif
       SW(SW_68K){
       PROFILE_START("68K");
       M68KSync();  // Wait for the previous iteration to finish
