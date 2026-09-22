@@ -152,7 +152,7 @@ static u64 start_time_ = 0;
 static int sw_flag = 0; 
 static int counter = 0;
 
-#define KEISOKU
+//#define KEISOKU
 #ifdef KEISOKU
 #define SW(n) for(tick_start();sw_flag;tick_end(n)) 
 #else
@@ -876,13 +876,18 @@ int YabauseEmulate(void) {
       }
       }
 
-#if 0
+#if 1
       scucount+= (sh2cycles >> 1);
       if(oneframeexec) {
          SW(SW_SCU){
          PROFILE_START("SCU");
          ScuExec(scucount);
          PROFILE_STOP("SCU");
+         }
+         SW(SW_68K){
+         PROFILE_START("68K");
+         M68KSync();  // Wait for the previous iteration to finish
+         PROFILE_STOP("68K");
          }
       }
 #else
@@ -891,12 +896,12 @@ int YabauseEmulate(void) {
       ScuExec(sh2cycles >> 1);
       PROFILE_STOP("SCU");
       }
-#endif
       SW(SW_68K){
       PROFILE_START("68K");
       M68KSync();  // Wait for the previous iteration to finish
       PROFILE_STOP("68K");
       }
+#endif
 
       SW(SW_SMPC){
       yabsys.UsecFrac += usecinc;
