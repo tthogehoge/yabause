@@ -1283,6 +1283,7 @@ DynarecSh2::DynarecSh2() {
   m_pCompiler = CompileBlocks::getInstance();
   m_ClockCounter = 0;
   m_IntruptTbl.clear();
+  interrupt_pending_.store(false, std::memory_order_relaxed);
   m_bIntruptSort = true;
   pre_cnt_ = 0;
   pre_exe_count_ = 0;
@@ -1316,6 +1317,7 @@ void DynarecSh2::ResetCPU(){
   interruput_cnt_ = 0;
   memcycle_ = 0;
   m_IntruptTbl.clear();
+  interrupt_pending_.store(false, std::memory_order_relaxed);
 }
 
 void DynarecSh2::ExecuteCount( u32 Count ) {
@@ -1574,6 +1576,7 @@ void DynarecSh2::RemoveInterrupt(u8 Vector, u8 level) {
   else {
     m_pDynaSh2->SysReg[5] = 0x0000;
   }
+  interrupt_pending_.store(!m_IntruptTbl.empty(), std::memory_order_release);
   YabThreadUnLock(mtx_);
 }
 
@@ -1598,6 +1601,15 @@ void DynarecSh2::AddInterrupt( u8 Vector, u8 level )
   }
   m_bIntruptSort = true;
   m_pDynaSh2->SysReg[5] = m_IntruptTbl.begin()->level<<4;
+  interrupt_pending_.store(true, std::memory_order_release);
+  YabThreadUnLock(mtx_);
+}
+
+void DynarecSh2::ClearInterrupts() {
+  YabThreadLock(mtx_);
+  m_IntruptTbl.clear();
+  m_pDynaSh2->SysReg[5] = 0x0000;
+  interrupt_pending_.store(false, std::memory_order_release);
   YabThreadUnLock(mtx_);
 }
 
@@ -1606,7 +1618,7 @@ int DynarecSh2::CheckInterupt(){
 
   interruput_chk_cnt_++;
 
-  if( m_IntruptTbl.size() == 0 ) {
+  if (!interrupt_pending_.load(std::memory_order_acquire)) {
     return 0;
   }
 
@@ -1621,6 +1633,7 @@ int DynarecSh2::CheckInterupt(){
     }else{
       m_pDynaSh2->SysReg[5] = 0x0000;
     }
+    interrupt_pending_.store(!m_IntruptTbl.empty(), std::memory_order_release);
     YabThreadUnLock(mtx_);
     return 1;
   }
