@@ -1324,6 +1324,7 @@ void DynarecSh2::ExecuteCount( u32 Count ) {
   u32 targetcnt = 0;
   tagSH2 * const sh2 = m_pDynaSh2;
   u32 *count = &sh2->SysReg[4];
+  u32 * const memcycle = &memcycle_;
   
   *count = 0;
     if (Count > pre_exe_count_) {
@@ -1349,14 +1350,14 @@ void DynarecSh2::ExecuteCount( u32 Count ) {
   //if ((GET_SR() & 0xF0) < GET_ICOUNT()) {
   //  this->CheckInterupt();
   //}
-  memcycle_ = 0;
+  *memcycle = 0;
   while (*count < targetcnt) {
     if (Execute() == IN_INFINITY_LOOP ) {
         *count = targetcnt;
         loopskip_cnt_++;
     }
-    *count += memcycle_;
-    memcycle_ = 0;
+    *count += *memcycle;
+    *memcycle = 0;
     //printf("%d/%d\n",GET_COUNT(),targetcnt);
   }
 
@@ -1417,7 +1418,7 @@ inline int DynarecSh2::Execute(){
 #endif
 //#endif
 
-  const u32 pc = GET_PC();
+  const u32 pc = sh2->SysReg[3];
   if (pc == last_block_pc_ && last_lookup_slot_ != NULL &&
       *last_lookup_slot_ == last_block_) {
     pBlock = last_block_;
@@ -1560,7 +1561,7 @@ inline int DynarecSh2::Execute(){
 #endif
   
   if (HasPendingInterrupt() &&
-      (GET_SR() & 0xF0) < GET_ICOUNT()) {
+      (sh2->CtrlReg[0] & 0xF0) < sh2->SysReg[5]) {
     this->CheckInterupt();
   }
 
