@@ -1325,15 +1325,17 @@ void DynarecSh2::ExecuteCount( u32 Count ) {
   tagSH2 * const sh2 = m_pDynaSh2;
   u32 *count = &sh2->SysReg[4];
   u32 * const memcycle = &memcycle_;
+  const u32 pre_exe_count = pre_exe_count_;
+  u32 loopskip_count = loopskip_cnt_;
   
   *count = 0;
-    if (Count > pre_exe_count_) {
-    targetcnt = Count - pre_exe_count_;
+    if (Count > pre_exe_count) {
+    targetcnt = Count - pre_exe_count;
   }
   else {
     // Just Onestep
     //Execute();
-    pre_exe_count_ = (pre_exe_count_ + *count) - Count ;
+    pre_exe_count_ = (pre_exe_count + *count) - Count ;
     return;
   }
 
@@ -1354,7 +1356,7 @@ void DynarecSh2::ExecuteCount( u32 Count ) {
   while (*count < targetcnt) {
     if (Execute() == IN_INFINITY_LOOP ) {
         *count = targetcnt;
-        loopskip_cnt_++;
+        loopskip_count++;
     }
     *count += *memcycle;
     *memcycle = 0;
@@ -1362,6 +1364,7 @@ void DynarecSh2::ExecuteCount( u32 Count ) {
   }
 
   ctx_->cycles = *count;
+  loopskip_cnt_ = loopskip_count;
   //if (Count == 1) {
   //  one_step_ = true;
   //  pre_exe_count_ = 0;

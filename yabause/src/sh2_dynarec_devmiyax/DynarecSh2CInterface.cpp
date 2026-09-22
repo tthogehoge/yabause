@@ -399,7 +399,9 @@ void memSetByte(u32 addr , u8 data )
 {
   dynaLock();
   DynarecSh2 *context = DynarecSh2::CurrentContext;
+  u32 * const memcycle = &context->memcycle_;
   u32 cycle = 0;
+  const u32 offset = addr & 0xFFFFF;
   //LOG("memSetWord %08X, %08X\n", addr, data);
   CompileBlocks * block = context->GetCompiler();
   switch (addr & 0xDFF00000)
@@ -407,8 +409,8 @@ void memSetByte(u32 addr , u8 data )
   // Low Memory
   case 0x00200000:
     block->LookupTableLow[  (addr&LUTMASK_LOW)>>1 ] = NULL;
-    T2WriteByte(LowWram, addr & 0xFFFFF, data);
-    if (addr & 0x20000000) context->memcycle_ += 7;
+    T2WriteByte(LowWram, offset, data);
+    if (addr & 0x20000000) *memcycle += 7;
     dynaFree();
     return;
     break;
@@ -419,8 +421,8 @@ void memSetByte(u32 addr , u8 data )
 #else
     block->LookupTable[ (addr&LUTMASK)>>1 ] = NULL;
 #endif
-    T2WriteByte(HighWram, addr & 0xFFFFF, data);
-    if (addr & 0x20000000) context->memcycle_ += 2;
+    T2WriteByte(HighWram, offset, data);
+    if (addr & 0x20000000) *memcycle += 2;
     dynaFree();
     return;
     break;
@@ -433,7 +435,7 @@ void memSetByte(u32 addr , u8 data )
     }
   }
   MappedMemoryWriteByte(addr, data, &cycle);
-  context->memcycle_ += cycle;
+  *memcycle += cycle;
   dynaFree();
 }
 
@@ -441,7 +443,9 @@ void memSetWord(u32 addr, u16 data )
 {
   dynaLock();
   DynarecSh2 *context = DynarecSh2::CurrentContext;
+  u32 * const memcycle = &context->memcycle_;
   u32 cycle = 0;
+  const u32 offset = addr & 0xFFFFF;
   //LOG("memSetWord %08X, %08X\n", addr, data);
 
   CompileBlocks * block = context->GetCompiler();
@@ -450,8 +454,8 @@ void memSetWord(u32 addr, u16 data )
   // Low Memory
    case 0x00200000:
     block->LookupTableLow[ (addr&LUTMASK_LOW)>>1 ] = NULL;
-    T2WriteWord(LowWram, addr & 0xFFFFF, data);
-    if (addr & 0x20000000) context->memcycle_ += 7;
+    T2WriteWord(LowWram, offset, data);
+    if (addr & 0x20000000) *memcycle += 7;
     dynaFree();
     return;
     break;
@@ -462,8 +466,8 @@ void memSetWord(u32 addr, u16 data )
 #else
      block->LookupTable[(addr & LUTMASK) >> 1] = NULL;
 #endif
-    T2WriteWord(HighWram, addr & 0xFFFFF, data);
-    if (addr & 0x20000000) context->memcycle_ += 2;
+    T2WriteWord(HighWram, offset, data);
+    if (addr & 0x20000000) *memcycle += 2;
     dynaFree();
     return;
    }
@@ -476,7 +480,7 @@ void memSetWord(u32 addr, u16 data )
     }
   }
   MappedMemoryWriteWord(addr, data, &cycle);
-  context->memcycle_ += cycle;
+  *memcycle += cycle;
   dynaFree();
 }
 
@@ -484,21 +488,24 @@ void memSetLong(u32 addr , u32 data )
 {
   dynaLock();
   DynarecSh2 *context = DynarecSh2::CurrentContext;
+  u32 * const memcycle = &context->memcycle_;
   //LOG("memSetLong %08X, %08X\n", addr, data);
   u32 cycle = 0;
+  const u32 offset = addr & 0xFFFFF;
 
   CompileBlocks * block = context->GetCompiler();
   switch (addr & 0xDFF00000)
   {  
     // Low Memory
-  case 0x00200000:
-    block->LookupTableLow[ (addr & LUTMASK_LOW)>>1  ] = NULL;
-    block->LookupTableLow[ ((addr & LUTMASK_LOW)>>1) + 1 ] = NULL;
-    T2WriteLong(LowWram, addr & 0xFFFFF, data);
-    if(addr&0x20000000) context->memcycle_ += 7;
+  case 0x00200000: {
+    const u32 index = (addr & LUTMASK_LOW) >> 1;
+    block->LookupTableLow[index] = NULL;
+    block->LookupTableLow[index + 1] = NULL;
+    T2WriteLong(LowWram, offset, data);
+    if(addr&0x20000000) *memcycle += 7;
     dynaFree();
     return;
-    break;
+  }
   // High Memory
   case 0x06000000:
 #if defined(SET_DIRTY)
@@ -508,8 +515,8 @@ void memSetLong(u32 addr , u32 data )
     block->LookupTable[(addr & LUTMASK) >> 1] = NULL;
     block->LookupTable[((addr & LUTMASK) >> 1) + 1] = NULL;
 #endif
-    T2WriteLong(HighWram, addr & 0xFFFFF, data);
-    if (addr & 0x20000000) context->memcycle_ += 2;
+    T2WriteLong(HighWram, offset, data);
+    if (addr & 0x20000000) *memcycle += 2;
     dynaFree();
     return;
     break;
@@ -522,7 +529,7 @@ void memSetLong(u32 addr , u32 data )
     }
   }
   MappedMemoryWriteLong(addr, data, &cycle);
-  context->memcycle_ += cycle;
+  *memcycle += cycle;
   dynaFree();
 }
 
@@ -530,28 +537,30 @@ u8 memGetByte(u32 addr)
 {
   dynaLock();
   DynarecSh2 *context = DynarecSh2::CurrentContext;
+  u32 * const memcycle = &context->memcycle_;
   u8 val;
   u32 cycle = 0;
+  const u32 offset = addr & 0xFFFFF;
   
   switch (addr & 0xDFF00000)
   {
     // Low Memory
   case 0x00200000:
-    val = T2ReadByte(LowWram, addr & 0xFFFFF);
-    if (addr & 0x20000000) context->memcycle_ += 4;
+    val = T2ReadByte(LowWram, offset);
+    if (addr & 0x20000000) *memcycle += 4;
     dynaFree();
     return val;
     break;
     // High Memory
   case 0x06000000:
-    val = T2ReadByte(HighWram, addr & 0xFFFFF);
-    if (addr & 0x20000000) context->memcycle_ += 2;
+    val = T2ReadByte(HighWram, offset);
+    if (addr & 0x20000000) *memcycle += 2;
     dynaFree();
     return val;
     break;
   }
   val = MappedMemoryReadByte(addr, &cycle);
-  context->memcycle_ += cycle;
+  *memcycle += cycle;
   dynaFree();
   return val;
 }
@@ -560,28 +569,30 @@ u16 memGetWord(u32 addr)
 {
   dynaLock();
   DynarecSh2 *context = DynarecSh2::CurrentContext;
+  u32 * const memcycle = &context->memcycle_;
   u16 val;
   u32 cycle = 0;
+  const u32 offset = addr & 0xFFFFF;
 
   switch (addr & 0xDFF00000)
   {
   // Low Memory
   case 0x00200000:
-    val = T2ReadWord(LowWram, addr & 0xFFFFF);
-    if (addr & 0x20000000) context->memcycle_ += 4;
+    val = T2ReadWord(LowWram, offset);
+    if (addr & 0x20000000) *memcycle += 4;
     dynaFree();
     return val;
     break;
     // High Memory
   case 0x06000000:
-    val = T2ReadWord(HighWram, addr & 0xFFFFF);
-    if (addr & 0x20000000) context->memcycle_ += 2;
+    val = T2ReadWord(HighWram, offset);
+    if (addr & 0x20000000) *memcycle += 2;
     dynaFree();
     return val;
     break;
   }
   val = MappedMemoryReadWord(addr, &cycle);
-  context->memcycle_ += cycle;
+  *memcycle += cycle;
   dynaFree();
   return val;
 }
@@ -590,27 +601,29 @@ u32 memGetLong(u32 addr)
 {
   dynaLock();
   DynarecSh2 *context = DynarecSh2::CurrentContext;
+  u32 * const memcycle = &context->memcycle_;
   u32 val;
   u32 cycle = 0;
+  const u32 offset = addr & 0xFFFFF;
   switch (addr & 0xDFF00000)
   {
   // Low Memory
   case 0x00200000:
-    val = T2ReadLong(LowWram, addr & 0xFFFFF);
-    if (addr & 0x20000000) context->memcycle_ += 4;
+    val = T2ReadLong(LowWram, offset);
+    if (addr & 0x20000000) *memcycle += 4;
     dynaFree();
     return val;
     break;
     // High Memory
   case 0x06000000:
-    val = T2ReadLong(HighWram, addr & 0xFFFFF);
-    if (addr & 0x20000000) context->memcycle_ += 2;
+    val = T2ReadLong(HighWram, offset);
+    if (addr & 0x20000000) *memcycle += 2;
     dynaFree();
     return val;
     break;
   }
   val = MappedMemoryReadLong(addr, &cycle);
-  context->memcycle_ += cycle;
+  *memcycle += cycle;
   dynaFree();
   return val;
 }
@@ -653,6 +666,7 @@ int DebugDelayClock() {
 
 int DebugEachClock() {
   dynaLock();
+  DynarecSh2 * const context = DynarecSh2::CurrentContext;
 
   #define INSTRUCTION_B(x) ((x & 0x0F00) >> 8)
   #define INSTRUCTION_C(x) ((x & 0x00F0) >> 4)
@@ -729,9 +743,9 @@ if( pc == 0x060133C8 ) {
   CurrentSH2->pchistory[CurrentSH2->pchistory_index & (MAX_DMPHISTORY-1) ] = DynarecSh2::CurrentContext->GET_PC();
   //CurrentSH2->regshistory[CurrentSH2->pchistory_index & 0xFF] = NULL;
 #endif
-  DynaCheckBreakPoint(DynarecSh2::CurrentContext->GET_PC());
+  DynaCheckBreakPoint(context->GET_PC());
 
-  if (DynarecSh2::CurrentContext->CheckOneStep()){
+  if (context->CheckOneStep()){
     dynaFree();
     return 1;
   }
