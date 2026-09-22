@@ -341,6 +341,9 @@ protected:
   u32 interruput_cnt_;
   u32 loopskip_cnt_;
   std::atomic<bool> interrupt_pending_{false};
+  Block *last_block_ = NULL;
+  Block **last_lookup_slot_ = NULL;
+  u32 last_block_pc_ = 0;
 
   enum enDebugState {
     NORMAL,
@@ -366,6 +369,9 @@ public:
   void RemoveInterrupt(u8 Vector, u8 level);
   void AddInterrupt( u8 Vector, u8 level );
   void ClearInterrupts();
+  inline bool HasPendingInterrupt() const {
+    return interrupt_pending_.load(std::memory_order_acquire);
+  }
   int CheckInterupt();
   int InterruptRutine(u8 Vector, u8 level);
   int CheckOneStep();
