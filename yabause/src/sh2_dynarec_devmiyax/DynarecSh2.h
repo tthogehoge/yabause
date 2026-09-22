@@ -277,18 +277,19 @@ public:
   inline void setDirty(u32 addr) {
     addr = adress_mask(addr);
     if (!ParentMaybeNonEmpty(addr)) return;      // fast 64KB bitmap check first
-    if (LookupParentTable[addr].size() == 0) return;  // safety net kept during rollout
+    if (LookupParentTable[addr].empty()) return;  // safety net kept during rollout
     for (auto it = LookupParentTable[addr].begin(); it != LookupParentTable[addr].end(); it++) {
-      if (LookupTable[*it] != NULL) {
-        for (u32 i = adress_mask(LookupTable[*it]->b_addr) ; i <= adress_mask(LookupTable[*it]->e_addr); i++ ) {
+      Block *block = LookupTable[*it];
+      if (block != NULL) {
+        for (u32 i = adress_mask(block->b_addr) ; i <= adress_mask(block->e_addr); i++ ) {
           if (i != addr) {
             LookupParentTable[i].remove(*it);
             ClearParentMaybeNonEmptyIfEmpty(i);
           }
         }
-         LOG("%d %08X is removed", LookupTable[*it]->id, (*it) << 1);
+         LOG("%d %08X is removed", block->id, (*it) << 1);
         remove_count_++;
-        self_modify_block[ (((*it) << 1) | 0x06000000) ] = LookupTable[*it]->id;
+        self_modify_block[ (((*it) << 1) | 0x06000000) ] = block->id;
         LookupTable[*it] = NULL;
       }
     }
@@ -364,6 +365,7 @@ public:
   void SetSlave(bool is_slave) { is_slave_ = is_slave; }
   void SetContext(SH2_struct * ctx) { ctx_= ctx;}
   bool IsSlave() { return is_slave_;  }
+  CompileBlocks *GetCompiler() { return m_pCompiler; }
 
   dlstIntct m_IntruptTbl;
   void RemoveInterrupt(u8 Vector, u8 level);
