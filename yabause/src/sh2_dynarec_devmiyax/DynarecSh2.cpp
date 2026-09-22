@@ -1322,15 +1322,17 @@ void DynarecSh2::ResetCPU(){
 
 void DynarecSh2::ExecuteCount( u32 Count ) {
   u32 targetcnt = 0;
+  tagSH2 * const sh2 = m_pDynaSh2;
+  u32 *count = &sh2->SysReg[4];
   
-  m_pDynaSh2->SysReg[4] = 0;
+  *count = 0;
     if (Count > pre_exe_count_) {
     targetcnt = Count - pre_exe_count_;
   }
   else {
     // Just Onestep
     //Execute();
-    pre_exe_count_ = (pre_exe_count_ + m_pDynaSh2->SysReg[4]) - Count ;
+    pre_exe_count_ = (pre_exe_count_ + *count) - Count ;
     return;
   }
 
@@ -1342,30 +1344,30 @@ void DynarecSh2::ExecuteCount( u32 Count ) {
   }
 #endif
 
-  m_pDynaSh2->exitcount = targetcnt;
+  sh2->exitcount = targetcnt;
 
   //if ((GET_SR() & 0xF0) < GET_ICOUNT()) {
   //  this->CheckInterupt();
   //}
   memcycle_ = 0;
-  while (m_pDynaSh2->SysReg[4] < targetcnt) {
+  while (*count < targetcnt) {
     if (Execute() == IN_INFINITY_LOOP ) {
-        SET_COUNT(targetcnt);
+        *count = targetcnt;
         loopskip_cnt_++;
     }
-    m_pDynaSh2->SysReg[4] += memcycle_;
+    *count += memcycle_;
     memcycle_ = 0;
     //printf("%d/%d\n",GET_COUNT(),targetcnt);
   }
 
-  CurrentSH2->cycles = m_pDynaSh2->SysReg[4];
+  CurrentSH2->cycles = *count;
   //if (Count == 1) {
   //  one_step_ = true;
   //  pre_exe_count_ = 0;
   //}
   //else {
   //  one_step_ = false;
-    pre_exe_count_ = m_pDynaSh2->SysReg[4] - targetcnt;
+    pre_exe_count_ = *count - targetcnt;
   //}
 }
 
@@ -1555,8 +1557,8 @@ inline int DynarecSh2::Execute(){
   ((dynaFunc)((void*)(pBlock->code)))(m_pDynaSh2);
 #endif
   
-  if ((GET_SR() & 0xF0) < GET_ICOUNT() &&
-      HasPendingInterrupt()) {
+  if (HasPendingInterrupt() &&
+      (GET_SR() & 0xF0) < GET_ICOUNT()) {
     this->CheckInterupt();
   }
 
