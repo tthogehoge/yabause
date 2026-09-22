@@ -1635,7 +1635,7 @@ int DynarecSh2::CheckInterupt(){
   interruput_chk_cnt_++;
 #endif
 
-  if (!interrupt_pending_.load(std::memory_order_acquire)) {
+  if (!interrupt_pending_.load(std::memory_order_relaxed)) {
     return 0;
   }
 

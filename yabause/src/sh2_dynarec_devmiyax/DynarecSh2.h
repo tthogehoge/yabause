@@ -370,7 +370,7 @@ public:
   void AddInterrupt( u8 Vector, u8 level );
   void ClearInterrupts();
   inline bool HasPendingInterrupt() const {
-    return interrupt_pending_.load(std::memory_order_acquire);
+    return interrupt_pending_.load(std::memory_order_relaxed);
   }
   int CheckInterupt();
   int InterruptRutine(u8 Vector, u8 level);
