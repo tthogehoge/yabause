@@ -897,13 +897,13 @@ int CompileBlocks::EmmitCode(Block *page, addrs * ParentT )
   u32 write_memory_counter = 0;
   u32 calsize;
   std::unordered_map<u32, uintptr_t> addr_map;
+  addr_map.reserve(MAXINSTRCNT);
 
   startptr = ptr = page->code;
 
   i = 0;
   j = 0;
   count = 0;  
-  memset((void*)ptr,0,sizeof(char)*MAXBLOCKSIZE);
   memcpy((void*)ptr, (void*)prologue, PROLOGSIZE);
   ptr += PROLOGSIZE;
   int MaxSize = 0;
@@ -1616,7 +1616,9 @@ void DynarecSh2::ClearInterrupts() {
 
 int DynarecSh2::CheckInterupt(){
 
+#if defined(DEBUG_CPU) || defined(EXECUTE_STAT)
   interruput_chk_cnt_++;
+#endif
 
   if (!interrupt_pending_.load(std::memory_order_acquire)) {
     return 0;
@@ -1647,7 +1649,9 @@ int DynarecSh2::InterruptRutine(u8 Vector, u8 level)
 
     u32 prepc = m_pDynaSh2->SysReg[3];
 
+#if defined(DEBUG_CPU) || defined(EXECUTE_STAT)
     interruput_cnt_++;
+#endif
     m_pDynaSh2->GenReg[15] -= 4;
     MappedMemoryWriteLong(m_pDynaSh2->GenReg[15], m_pDynaSh2->CtrlReg[0],NULL);
     m_pDynaSh2->GenReg[15] -= 4;
