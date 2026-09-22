@@ -1361,7 +1361,7 @@ void DynarecSh2::ExecuteCount( u32 Count ) {
     //printf("%d/%d\n",GET_COUNT(),targetcnt);
   }
 
-  CurrentSH2->cycles = *count;
+  ctx_->cycles = *count;
   //if (Count == 1) {
   //  one_step_ = true;
   //  pre_exe_count_ = 0;
