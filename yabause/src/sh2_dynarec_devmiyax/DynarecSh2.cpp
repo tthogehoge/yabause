@@ -1406,12 +1406,14 @@ inline int DynarecSh2::Execute(){
 
   Block * pBlock = NULL;
   Block ** lookup_slot = NULL;
+  tagSH2 * const sh2 = m_pDynaSh2;
+  CompileBlocks * const compiler = m_pCompiler;
 
 #if defined(DEBUG_CPU) || defined(EXECUTE_STAT)
-  m_pCompiler->exec_count_++;
+  compiler->exec_count_++;
 #endif
 #if defined(EXECUTE_STAT)
-  m_pCompiler->setShowCode( is_slave_ );
+  compiler->setShowCode( is_slave_ );
 #endif
 //#endif
 
@@ -1423,11 +1425,11 @@ inline int DynarecSh2::Execute(){
   }
   else if ((pc & 0xFF000000) == 0xC0000000)
   {
-    lookup_slot = &m_pCompiler->LookupTableC[(pc & LUTMASK_C) >> 1];
+    lookup_slot = &compiler->LookupTableC[(pc & LUTMASK_C) >> 1];
     pBlock = *lookup_slot;
     if (pBlock == NULL)
     {
-        pBlock = m_pCompiler->CompileBlock(pc);
+        pBlock = compiler->CompileBlock(pc);
       *lookup_slot = pBlock;
       if (pBlock == NULL) {
         Undecoded();
@@ -1463,11 +1465,11 @@ inline int DynarecSh2::Execute(){
          memcycle_ += ctx_->cycles;
         return 0;
       }
-      lookup_slot = &m_pCompiler->LookupTableRom[(pc & LUTMASK_ROM) >> 1];
+      lookup_slot = &compiler->LookupTableRom[(pc & LUTMASK_ROM) >> 1];
       pBlock = *lookup_slot;
       if (pBlock == NULL)
       {
-       pBlock = m_pCompiler->CompileBlock(pc);
+       pBlock = compiler->CompileBlock(pc);
         if (pBlock == NULL) {
           Undecoded();
           return IN_INFINITY_LOOP;
@@ -1478,11 +1480,11 @@ inline int DynarecSh2::Execute(){
 
       // Low Memory
     case 0x00200000:
-      lookup_slot = &m_pCompiler->LookupTableLow[(pc & LUTMASK_LOW) >> 1];
+      lookup_slot = &compiler->LookupTableLow[(pc & LUTMASK_LOW) >> 1];
       pBlock = *lookup_slot;
       if (pBlock == NULL)
       {
-        pBlock = m_pCompiler->CompileBlock(pc);
+        pBlock = compiler->CompileBlock(pc);
         if (pBlock == NULL) {
           Undecoded();
           return IN_INFINITY_LOOP;
@@ -1495,11 +1497,11 @@ inline int DynarecSh2::Execute(){
     case 0x06000000:
       /*case 0x06100000:*/
 
-      lookup_slot = &m_pCompiler->LookupTable[(pc & LUTMASK) >> 1];
+      lookup_slot = &compiler->LookupTable[(pc & LUTMASK) >> 1];
       pBlock = *lookup_slot;
       if (pBlock == NULL)
       {
-        pBlock = m_pCompiler->CompileBlock(pc, m_pCompiler->LookupParentTable);
+        pBlock = compiler->CompileBlock(pc, compiler->LookupParentTable);
         if (pBlock == NULL) {
           Undecoded();
           return IN_INFINITY_LOOP;
@@ -1510,7 +1512,7 @@ inline int DynarecSh2::Execute(){
 
       // Cache
     default:
-      pBlock = m_pCompiler->CompileBlock(pc);
+      pBlock = compiler->CompileBlock(pc);
       if (pBlock == NULL) {
         Undecoded();
         return IN_INFINITY_LOOP;
@@ -1545,16 +1547,16 @@ inline int DynarecSh2::Execute(){
     u32 prepc = pc;
   if (is_slave_) { //statics_trigger_ == COLLECTING) {
     u64 pretime = YabauseGetTicks();
-    ((dynaFunc)((void*)(pBlock->code)))(m_pDynaSh2);
+    ((dynaFunc)((void*)(pBlock->code)))(sh2);
     compie_statics_[prepc].count++;
     compie_statics_[prepc].time += YabauseGetTicks() - pretime;
     compie_statics_[prepc].end_addr = pBlock->e_addr;
   }
   else {
-    ((dynaFunc)((void*)(pBlock->code)))(m_pDynaSh2);
+    ((dynaFunc)((void*)(pBlock->code)))(sh2);
   }
 #else
-  ((dynaFunc)((void*)(pBlock->code)))(m_pDynaSh2);
+  ((dynaFunc)((void*)(pBlock->code)))(sh2);
 #endif
   
   if (HasPendingInterrupt() &&
@@ -1562,8 +1564,8 @@ inline int DynarecSh2::Execute(){
     this->CheckInterupt();
   }
 
-  if (!m_pCompiler->debug_mode_ && (pBlock->flags&BLOCK_LOOP) ){
-    if (m_pDynaSh2->SysReg[3] < pBlock->e_addr && m_pDynaSh2->SysReg[3] >= pBlock->b_addr) {
+  if (!compiler->debug_mode_ && (pBlock->flags&BLOCK_LOOP) ){
+    if (sh2->SysReg[3] < pBlock->e_addr && sh2->SysReg[3] >= pBlock->b_addr) {
       return IN_INFINITY_LOOP;
     } else {
       return 0;
