@@ -152,7 +152,7 @@ static u64 start_time_ = 0;
 static int sw_flag = 0; 
 static int counter = 0;
 
-//#define KEISOKU
+#define KEISOKU
 #ifdef KEISOKU
 #define SW(n) for(tick_start();sw_flag;tick_end(n)) 
 #else
@@ -826,29 +826,35 @@ int YabauseEmulate(void) {
       }
       }
 
-      SW(SW_HBIN){
 #ifdef YAB_STATICS
       cpu_emutime += (YabauseGetTicks() - current_cpu_clock) * 1000000 / yabsys.tickfreq;
 #endif
        yabsys.DecilineCount++;
        if(yabsys.DecilineCount == 9) {
+         SW(SW_HBIN){
          // HBlankIN
          PROFILE_START("hblankin");
          Vdp2HBlankIN();
          PROFILE_STOP("hblankin");
+         }
        }
        else if (yabsys.DecilineCount == 10) {
+         SW(SW_HBOUT){
          // HBlankOUT
          PROFILE_START("hblankout");
          Vdp2HBlankOUT();
          PROFILE_STOP("hblankout");
+         }
+         SW(SW_SCSP){
          PROFILE_START("SCSP");
          ScspExec();
          PROFILE_STOP("SCSP");
+         }
          yabsys.DecilineCount = 0;
          yabsys.LineCount++;
 
          if (yabsys.LineCount == yabsys.VBlankLineCount) {
+            SW(SW_VBIN){
 
 #if defined(ASYNC_SCSP)
             setM68kCounter((u64)(44100 * 256 / 60) << SCSP_FRACTIONAL_BITS);
@@ -862,18 +868,19 @@ int YabauseEmulate(void) {
 #endif
             PROFILE_STOP("vblankin");
             CheatDoPatches();
+            }
          }
          else if (yabsys.LineCount == yabsys.MaxLineCount)
          {
+            SW(SW_VBOUT){
             // VBlankOUT
             PROFILE_START("VDP1/VDP2");
             Vdp2VBlankOUT();
             yabsys.LineCount = 0;
             oneframeexec = 1;
             PROFILE_STOP("VDP1/VDP2");
-
+            }
          }
-      }
       }
 
 #if 1
