@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 
 #include <list>
 #include <map>
+#include <atomic>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -339,6 +340,7 @@ protected:
   u32 interruput_chk_cnt_;
   u32 interruput_cnt_;
   u32 loopskip_cnt_;
+  std::atomic<bool> interrupt_pending_{false};
 
   enum enDebugState {
     NORMAL,
@@ -363,6 +365,7 @@ public:
   dlstIntct m_IntruptTbl;
   void RemoveInterrupt(u8 Vector, u8 level);
   void AddInterrupt( u8 Vector, u8 level );
+  void ClearInterrupts();
   int CheckInterupt();
   int InterruptRutine(u8 Vector, u8 level);
   int CheckOneStep();

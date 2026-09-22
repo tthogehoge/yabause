@@ -222,7 +222,7 @@ int SH2DynGetInterrupts(SH2_struct *context, interrupt_struct interrupts[MAX_INT
 
 void SH2DynSetInterrupts(SH2_struct *context, int num_interrupts, const interrupt_struct interrupts[MAX_INTERRUPTS]){
   DynarecSh2 *pctx = (DynarecSh2*)context->ext;
-  pctx->m_IntruptTbl.clear();
+  pctx->ClearInterrupts();
   for (int i = 0; i < num_interrupts; i++) {
     dIntcTbl tmp;
     tmp.level = interrupts[i].level;
@@ -746,4 +746,3 @@ int EachClock() {
 
 
 }
-
