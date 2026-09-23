@@ -5531,6 +5531,7 @@ void ScspAsynMainCpuTime( void * p ){
       m68k_integer_part = getM68KCounter() >> SCSP_FRACTIONAL_BITS;
       m68k_cycle = m68k_integer_part - pre_m68k_cycle;
       if (thread_running == 0) break;
+      if (m68k_cycle == 0) YabThreadUSleep(100);
     } while (m68k_cycle == 0);
 
     m68k_inc += m68k_cycle;
