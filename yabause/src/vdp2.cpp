@@ -230,6 +230,25 @@ void FASTCALL Vdp2RamWriteLong(u32 addr, u32 val) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+// Used by SucDmaExec's burst-copy fast path (scu.c) to bypass the mapped
+// memory dispatcher for large linear DMA transfers into VDP2 RAM. Replicates
+// the A0/A1/B0/B1 "dirty quadrant" tracking done per-word above, but for the
+// whole burst's address range in one call.
+
+extern "C" u8 *Vdp2RamGetBasePtr(void) {
+   return Vdp2Ram;
+}
+
+extern "C" void Vdp2RamNotifyBurstWrite(u32 addr, u32 len) {
+   addr &= 0x7FFFF;
+   u32 end = addr + len;
+   if (A0_Updated == 0 && addr < 0x20000 && end > 0x00000) A0_Updated = 1;
+   if (A1_Updated == 0 && addr < 0x40000 && end > 0x20000) A1_Updated = 1;
+   if (B0_Updated == 0 && addr < 0x60000 && end > 0x40000) B0_Updated = 1;
+   if (B1_Updated == 0 && addr < 0x80000 && end > 0x60000) B1_Updated = 1;
+}
+
+//////////////////////////////////////////////////////////////////////////////
 
 u8 FASTCALL Vdp2ColorRamReadByte(u32 addr) {
    addr &= 0xFFF;
