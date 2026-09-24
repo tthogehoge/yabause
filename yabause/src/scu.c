@@ -42,6 +42,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
 #include <stdlib.h>
+#include <string.h>
 #include "scu.h"
 #include "debug.h"
 #include "memory.h"
@@ -141,6 +142,108 @@ static void ScuDspCaptureProgram(void) {
    }
 }
 #endif // SCU_DSP_CAPTURE
+
+// ---------------------------------------------------------------------------
+// SucDmaExec profiling instrumentation.
+//
+// OFF by default. Enable it the next time you can run on real hardware to
+// answer the questions that actually matter before touching SucDmaExec's
+// structure again:
+//   - which branch (16-bit fill / 32-bit fill / B-BUS-write copy /
+//     B-BUS-read copy / generic copy) actually dominates call count and
+//     total time
+//   - how big a typical transfer is (avgXfer) and how much of the *time
+//     budget a typical call actually consumes (avgTime)
+//   - whether the burst fast path added in SucDmaBurstToBBus/Generic is
+//     even being taken (burst hit rate), and how many words it's moving
+//     when it is
+//
+#define SCU_DMA_PROFILE
+
+#ifdef SCU_DMA_PROFILE
+#include <time.h>
+
+typedef struct {
+  u64 calls;
+  u64 sumTransferNumber; // TransferNumber at branch entry, summed
+  u64 sumTimeConsumed;   // *time actually consumed this call, summed
+} ScuDmaBranchStat;
+
+static ScuDmaBranchStat scuDmaFill16;
+static ScuDmaBranchStat scuDmaFill32;
+static ScuDmaBranchStat scuDmaCopyBBusWrite;
+static ScuDmaBranchStat scuDmaCopyBBusRead;
+static ScuDmaBranchStat scuDmaCopyGeneric;
+
+// Burst fast path (SucDmaBurstToBBus / SucDmaBurstGeneric) hit rate.
+static u64 scuDmaBurstAttempts = 0; // times a burst helper was called
+static u64 scuDmaBurstHits = 0;     // times it actually moved data (units>0)
+static u64 scuDmaBurstUnits = 0;    // total words moved via the burst path
+
+// Why a burst attempt missed, broken down so a low hit rate is actionable
+// instead of a mystery. Checked in this order inside the burst helpers.
+static u64 scuDmaBurstMissWriteAdd = 0;       // WriteAdd wasn't the linear value (2 for B-BUS, 4 for generic)
+static u64 scuDmaBurstMissReadRegion = 0;     // ReadAddress isn't LowWram/HighWram/Vdp1Ram/Vdp2Ram (SoundRAM/registers/cart, etc.)
+static u64 scuDmaBurstMissWriteRegion = 0;    // WriteAddress isn't a recognized buffer (SoundRAM/registers, etc.)
+static u64 scuDmaBurstMissNoRoom = 0;         // classified fine, but *time/TransferNumber/buffer-edge left 0 units to move
+
+static u64 scuDmaProfileCalls = 0;
+static u64 scuDmaProfileNs = 0;
+static u64 scuDmaProfileLastReportNs = 0;
+
+static INLINE u64 ScuDmaProfileNowNs(void) {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (u64)ts.tv_sec * 1000000000ull + (u64)ts.tv_nsec;
+}
+
+static void ScuDmaProfileReport(void) {
+  u64 now = ScuDmaProfileNowNs();
+  if (now - scuDmaProfileLastReportNs <= 1000000000ull)
+    return;
+  scuDmaProfileLastReportNs = now;
+
+  fprintf(stderr,
+    "[SCU DMA PROFILE] calls=%llu total=%.3fms avg=%.3fus\n",
+    (unsigned long long)scuDmaProfileCalls,
+    scuDmaProfileNs / 1e6,
+    scuDmaProfileCalls ? (scuDmaProfileNs / 1000.0) / scuDmaProfileCalls : 0.0);
+
+  fprintf(stderr,
+    "  fill16   calls=%-8llu avgXfer=%-8.1f avgTime=%.1f\n"
+    "  fill32   calls=%-8llu avgXfer=%-8.1f avgTime=%.1f\n"
+    "  cp_bbusW calls=%-8llu avgXfer=%-8.1f avgTime=%.1f\n"
+    "  cp_bbusR calls=%-8llu avgXfer=%-8.1f avgTime=%.1f\n"
+    "  cp_gen   calls=%-8llu avgXfer=%-8.1f avgTime=%.1f\n",
+    (unsigned long long)scuDmaFill16.calls,
+    scuDmaFill16.calls ? (double)scuDmaFill16.sumTransferNumber / scuDmaFill16.calls : 0.0,
+    scuDmaFill16.calls ? (double)scuDmaFill16.sumTimeConsumed / scuDmaFill16.calls : 0.0,
+    (unsigned long long)scuDmaFill32.calls,
+    scuDmaFill32.calls ? (double)scuDmaFill32.sumTransferNumber / scuDmaFill32.calls : 0.0,
+    scuDmaFill32.calls ? (double)scuDmaFill32.sumTimeConsumed / scuDmaFill32.calls : 0.0,
+    (unsigned long long)scuDmaCopyBBusWrite.calls,
+    scuDmaCopyBBusWrite.calls ? (double)scuDmaCopyBBusWrite.sumTransferNumber / scuDmaCopyBBusWrite.calls : 0.0,
+    scuDmaCopyBBusWrite.calls ? (double)scuDmaCopyBBusWrite.sumTimeConsumed / scuDmaCopyBBusWrite.calls : 0.0,
+    (unsigned long long)scuDmaCopyBBusRead.calls,
+    scuDmaCopyBBusRead.calls ? (double)scuDmaCopyBBusRead.sumTransferNumber / scuDmaCopyBBusRead.calls : 0.0,
+    scuDmaCopyBBusRead.calls ? (double)scuDmaCopyBBusRead.sumTimeConsumed / scuDmaCopyBBusRead.calls : 0.0,
+    (unsigned long long)scuDmaCopyGeneric.calls,
+    scuDmaCopyGeneric.calls ? (double)scuDmaCopyGeneric.sumTransferNumber / scuDmaCopyGeneric.calls : 0.0,
+    scuDmaCopyGeneric.calls ? (double)scuDmaCopyGeneric.sumTimeConsumed / scuDmaCopyGeneric.calls : 0.0);
+
+  fprintf(stderr,
+    "  burst: attempts=%llu hits=%llu (%.1f%%) units_moved=%llu\n"
+    "  burst miss: writeAdd=%llu readRegion=%llu writeRegion=%llu noRoom=%llu\n",
+    (unsigned long long)scuDmaBurstAttempts,
+    (unsigned long long)scuDmaBurstHits,
+    scuDmaBurstAttempts ? (scuDmaBurstHits * 100.0) / scuDmaBurstAttempts : 0.0,
+    (unsigned long long)scuDmaBurstUnits,
+    (unsigned long long)scuDmaBurstMissWriteAdd,
+    (unsigned long long)scuDmaBurstMissReadRegion,
+    (unsigned long long)scuDmaBurstMissWriteRegion,
+    (unsigned long long)scuDmaBurstMissNoRoom);
+}
+#endif // SCU_DMA_PROFILE
 
 // ---------------------------------------------------------------------------
 // Capture-specialized DSP fast paths.
@@ -1280,10 +1383,223 @@ void ScuSetAddValue(scudmainfo_struct * dmainfo) {
 
 }
 
-void SucDmaExec(scudmainfo_struct * dma, int * time ) {
+// ---------------------------------------------------------------------
+// Burst-copy fast path for SucDmaExec.
+//
+// The per-word MappedMemoryRead*/Write* dispatch (address-range switch +
+// indirect call through ReadLongList/WriteLongList) is the dominant cost
+// for large linear DMA transfers. When both the source and destination
+// resolve to a known, side-effect-light buffer (work RAM, VDP1 RAM, or
+// VDP2 RAM), we can either do a single memmove (when both sides use the
+// same byte layout) or a tight loop that calls the T1/T2 macros directly
+// (when the layouts differ), skipping the dispatcher entirely.
+//
+// Vdp1Ram/Vdp2Ram and their write side-effects live in C++ translation
+// units (vdp1.cpp/vdp2.cpp), so they're reached through small extern "C"
+// helpers rather than touched directly from this file.
+extern u8   *Vdp1RamGetBasePtr(void);
+extern void Vdp1RamNotifyBurstWrite(void);
+extern u8   *Vdp2RamGetBasePtr(void);
+extern void Vdp2RamNotifyBurstWrite(u32 addr, u32 len);
+
+typedef enum {
+  SCU_MEM_NONE = 0,
+  SCU_MEM_LOWWRAM,   // T2 layout (WSWAP32), 1MB
+  SCU_MEM_HIGHWRAM,  // T2 layout (WSWAP32), 1MB
+  SCU_MEM_VDP1RAM,   // T1 layout (BSWAP32), 512KB
+  SCU_MEM_VDP2RAM,   // T1 layout (BSWAP32), 512KB
+} ScuMemKind;
+
+static INLINE ScuMemKind ScuClassifyAddr(u32 addr, u8 **out_base, u32 *out_mask) {
+  u32 a = addr & 0x1FFFFFFF;
+  if (a >= 0x00200000 && a <= 0x002FFFFF) { *out_base = LowWram;  *out_mask = 0xFFFFF;  return SCU_MEM_LOWWRAM; }
+  if (a >= 0x06000000 && a <= 0x060FFFFF) { *out_base = HighWram; *out_mask = 0xFFFFF;  return SCU_MEM_HIGHWRAM; }
+  if (a >= 0x05C00000 && a <= 0x05C7FFFF) { *out_base = Vdp1RamGetBasePtr(); *out_mask = 0x7FFFF; return SCU_MEM_VDP1RAM; }
+  if (a >= 0x05E00000 && a <= 0x05EFFFFF) { *out_base = Vdp2RamGetBasePtr(); *out_mask = 0x7FFFF; return SCU_MEM_VDP2RAM; }
+  *out_base = NULL; *out_mask = 0;
+  return SCU_MEM_NONE;
+}
+
+static INLINE int ScuMemIsT1(ScuMemKind k) {
+  return k == SCU_MEM_VDP1RAM || k == SCU_MEM_VDP2RAM;
+}
+
+static void ScuDmaNotifyBurstWrite(ScuMemKind wkind, u32 wOff, u32 lenBytes) {
+  if (wkind == SCU_MEM_VDP1RAM)
+    Vdp1RamNotifyBurstWrite();
+  else if (wkind == SCU_MEM_VDP2RAM)
+    Vdp2RamNotifyBurstWrite(wOff, lenBytes);
+  // LowWram/HighWram: no extra side effect here; the caller still issues
+  // its own SH2WriteNotify() for those, exactly as the per-word path does.
+}
+
+// B-BUS write path (WriteAddress in VDP1RAM/VDP2RAM/SoundRAM/register
+// space): only handles the common linear case, WriteAdd == 2, and only
+// when the destination is VDP1RAM or VDP2RAM specifically (SoundRAM and
+// registers are left on the per-word path -- see the SCSP notes). Returns
+// the number of *time units it consumed (0 if the fast path didn't apply).
+static int SucDmaBurstToBBus(scudmainfo_struct * dma, int * time) {
+#ifdef SCU_DMA_PROFILE
+  scuDmaBurstAttempts++;
+#endif
+  if (dma->WriteAdd != 2) {
+#ifdef SCU_DMA_PROFILE
+    scuDmaBurstMissWriteAdd++;
+#endif
+    return 0;
+  }
+
+  u8 *rbase, *wbase;
+  u32 rmask, wmask;
+  ScuMemKind rkind = ScuClassifyAddr(dma->ReadAddress, &rbase, &rmask);
+  ScuMemKind wkind = ScuClassifyAddr(dma->WriteAddress, &wbase, &wmask);
+
+  if (rkind == SCU_MEM_NONE) {
+#ifdef SCU_DMA_PROFILE
+    scuDmaBurstMissReadRegion++;
+#endif
+    return 0;
+  }
+  if (wkind == SCU_MEM_NONE || (wkind != SCU_MEM_VDP1RAM && wkind != SCU_MEM_VDP2RAM)) {
+#ifdef SCU_DMA_PROFILE
+    scuDmaBurstMissWriteRegion++;
+#endif
+    return 0;
+  }
+
+  s32 unitsByTime = *time;
+  s32 unitsByXfer = (dma->TransferNumber + 1) / 2; // ceil, matches the "-=2; <=0" exit test below
+  s32 units = unitsByTime < unitsByXfer ? unitsByTime : unitsByXfer;
+  if (units <= 0) {
+#ifdef SCU_DMA_PROFILE
+    scuDmaBurstMissNoRoom++;
+#endif
+    return 0;
+  }
+
+  u32 rOff = dma->ReadAddress & rmask;
+  u32 wOff = dma->WriteAddress & wmask;
+  s32 rRoom = (s32)(((rmask + 1) - rOff) / 2);
+  s32 wRoom = (s32)(((wmask + 1) - wOff) / 2);
+  if (units > rRoom) units = rRoom;
+  if (units > wRoom) units = wRoom;
+  if (units <= 0) {
+#ifdef SCU_DMA_PROFILE
+    scuDmaBurstMissNoRoom++;
+#endif
+    return 0;
+  }
+
+  if (ScuMemIsT1(rkind) == ScuMemIsT1(wkind)) {
+    // Same byte layout (VDP1RAM <-> VDP2RAM): a raw copy is valid.
+    memmove(wbase + wOff, rbase + rOff, (size_t)units * 2);
+  } else {
+    // WRAM (T2) source -> VDP RAM (T1) destination: no dispatcher, but
+    // still route through the matching per-buffer macro so byte order
+    // stays correct.
+    s32 i;
+    for (i = 0; i < units; i++)
+      T1WriteWord(wbase, wOff + (u32)i * 2, T2ReadWord(rbase, rOff + (u32)i * 2));
+  }
+
+  *time -= units;
+  dma->ReadAddress += (u32)units * 2;
+  dma->WriteAddress += (u32)units * 2;
+  dma->TransferNumber -= units * 2;
+  ScuDmaNotifyBurstWrite(wkind, wOff, (u32)units * 2);
+#ifdef SCU_DMA_PROFILE
+  scuDmaBurstHits++;
+  scuDmaBurstUnits += (u64)units;
+#endif
+  return units;
+}
+
+// General copy path (neither side in B-BUS range): only handles the
+// common linear case, WriteAdd == 4. Covers WRAM<->WRAM primarily.
+static int SucDmaBurstGeneric(scudmainfo_struct * dma, int * time) {
+#ifdef SCU_DMA_PROFILE
+  scuDmaBurstAttempts++;
+#endif
+  if (dma->WriteAdd != 4) {
+#ifdef SCU_DMA_PROFILE
+    scuDmaBurstMissWriteAdd++;
+#endif
+    return 0;
+  }
+
+  u8 *rbase, *wbase;
+  u32 rmask, wmask;
+  ScuMemKind rkind = ScuClassifyAddr(dma->ReadAddress, &rbase, &rmask);
+  ScuMemKind wkind = ScuClassifyAddr(dma->WriteAddress, &wbase, &wmask);
+
+  if (rkind == SCU_MEM_NONE) {
+#ifdef SCU_DMA_PROFILE
+    scuDmaBurstMissReadRegion++;
+#endif
+    return 0;
+  }
+  if (wkind == SCU_MEM_NONE) {
+#ifdef SCU_DMA_PROFILE
+    scuDmaBurstMissWriteRegion++;
+#endif
+    return 0;
+  }
+
+  s32 unitsByTime = *time;
+  s32 unitsByXfer = (dma->TransferNumber + 3) / 4; // ceil, matches the "-=4; <=0" exit test below
+  s32 units = unitsByTime < unitsByXfer ? unitsByTime : unitsByXfer;
+  if (units <= 0) {
+#ifdef SCU_DMA_PROFILE
+    scuDmaBurstMissNoRoom++;
+#endif
+    return 0;
+  }
+
+  u32 rOff = dma->ReadAddress & rmask;
+  u32 wOff = dma->WriteAddress & wmask;
+  s32 rRoom = (s32)(((rmask + 1) - rOff) / 4);
+  s32 wRoom = (s32)(((wmask + 1) - wOff) / 4);
+  if (units > rRoom) units = rRoom;
+  if (units > wRoom) units = wRoom;
+  if (units <= 0) {
+#ifdef SCU_DMA_PROFILE
+    scuDmaBurstMissNoRoom++;
+#endif
+    return 0;
+  }
+
+  if (ScuMemIsT1(rkind) == ScuMemIsT1(wkind)) {
+    memmove(wbase + wOff, rbase + rOff, (size_t)units * 4);
+  } else {
+    s32 i;
+    if (ScuMemIsT1(rkind)) {
+      for (i = 0; i < units; i++)
+        T2WriteLong(wbase, wOff + (u32)i * 4, T1ReadLong(rbase, rOff + (u32)i * 4));
+    } else {
+      for (i = 0; i < units; i++)
+        T1WriteLong(wbase, wOff + (u32)i * 4, T2ReadLong(rbase, rOff + (u32)i * 4));
+    }
+  }
+
+  *time -= units;
+  dma->ReadAddress += (u32)units * 4;
+  dma->WriteAddress += (u32)units * 4;
+  dma->TransferNumber -= units * 4;
+  ScuDmaNotifyBurstWrite(wkind, wOff, (u32)units * 4);
+#ifdef SCU_DMA_PROFILE
+  scuDmaBurstHits++;
+  scuDmaBurstUnits += (u64)units;
+#endif
+  return units;
+}
+
+#ifdef SCU_DMA_PROFILE
+static void SucDmaExecCore(scudmainfo_struct * dma, int * time) {
+#else
+void SucDmaExec(scudmainfo_struct * dma, int * time) {
+#endif
   //LOG("DoDMA src=%08X,dst=%08X,size=%d, ra:%d/wa:%d flame=%d:%d\n",
   //  dma->ReadAddress, dma->WriteAddress, dma->TransferNumber, dma->ReadAdd, dma->WriteAdd, yabsys.frame_count, yabsys.LineCount);
-  u32 cycle = 0;
   if (dma->ReadAdd == 0) {
     // DMA fill
     // Is it a constant source or a register whose value can change from
@@ -1311,9 +1627,9 @@ void SucDmaExec(scudmainfo_struct * dma, int * time ) {
         u32 start = dma->WriteAddress;
         while ( *time > 0 ) {
           *time -= 1;
-          MappedMemoryWriteWord(dma->WriteAddress, (u16)(val >> 16), &cycle);
+          MappedMemoryWriteWord(dma->WriteAddress, (u16)(val >> 16), NULL);
           dma->WriteAddress += dma->WriteAdd;
-          MappedMemoryWriteWord(dma->WriteAddress, (u16)val, &cycle);
+          MappedMemoryWriteWord(dma->WriteAddress, (u16)val, NULL);
           dma->WriteAddress += dma->WriteAdd;
           dma->TransferNumber -= 4;
           if (dma->TransferNumber <= 0 ) {
@@ -1327,10 +1643,10 @@ void SucDmaExec(scudmainfo_struct * dma, int * time ) {
         u32 start = dma->WriteAddress;
         while ( *time > 0) {
           *time -= 1;
-          u32 tmp = MappedMemoryReadLong((dma->ReadAddress & 0x0FFFFFFF), &cycle);
-          MappedMemoryWriteWord(dma->WriteAddress, (u16)(tmp >> 16), &cycle);
+          u32 tmp = MappedMemoryReadLong((dma->ReadAddress & 0x0FFFFFFF), NULL);
+          MappedMemoryWriteWord(dma->WriteAddress, (u16)(tmp >> 16), NULL);
           dma->WriteAddress += dma->WriteAdd;
-          MappedMemoryWriteWord(dma->WriteAddress, (u16)tmp, &cycle);
+          MappedMemoryWriteWord(dma->WriteAddress, (u16)tmp, NULL);
           dma->WriteAddress += dma->WriteAdd;
           dma->ReadAddress += dma->ReadAdd;
           dma->TransferNumber -= 4;
@@ -1346,10 +1662,10 @@ void SucDmaExec(scudmainfo_struct * dma, int * time ) {
       // Fill in 32-bit units (always aligned).
       u32 start = dma->WriteAddress;
       if (constant_source) {
-        u32 val = MappedMemoryReadLong((dma->ReadAddress & 0x0FFFFFFF), &cycle);
+        u32 val = MappedMemoryReadLong((dma->ReadAddress & 0x0FFFFFFF), NULL);
         while ( *time > 0) {
           *time -= 1;
-          MappedMemoryWriteLong(dma->WriteAddress, val, &cycle);
+          MappedMemoryWriteLong(dma->WriteAddress, val, NULL);
           dma->ReadAddress += dma->ReadAdd;
           dma->WriteAddress += dma->WriteAdd;
           dma->TransferNumber -= 4;
@@ -1362,8 +1678,8 @@ void SucDmaExec(scudmainfo_struct * dma, int * time ) {
       else {
         while (*time > 0) {
           *time -= 1;
-          u32 val = MappedMemoryReadLong((dma->ReadAddress & 0x0FFFFFFF), &cycle);
-          MappedMemoryWriteLong(dma->WriteAddress, val, &cycle);
+          u32 val = MappedMemoryReadLong((dma->ReadAddress & 0x0FFFFFFF), NULL);
+          MappedMemoryWriteLong(dma->WriteAddress, val, NULL);
           dma->ReadAddress += dma->ReadAdd;
           dma->WriteAddress += dma->WriteAdd;
           dma->TransferNumber -= 4;
@@ -1386,10 +1702,17 @@ void SucDmaExec(scudmainfo_struct * dma, int * time ) {
       // Copy in 16-bit units, avoiding misaligned accesses.
       u32 counter = 0;
       u32 start = dma->WriteAddress;
+
+      SucDmaBurstToBBus(dma, time); // no-op if the fast-path conditions aren't met
+      if (dma->TransferNumber <= 0) {
+        SH2WriteNotify(start, dma->WriteAddress - start);
+        return;
+      }
+
       while (*time > 0) {
         *time -= 1;
-        u16 tmp = MappedMemoryReadWord((dma->ReadAddress & 0x0FFFFFFF), &cycle);
-        MappedMemoryWriteWord(dma->WriteAddress, tmp, &cycle);
+        u16 tmp = MappedMemoryReadWord((dma->ReadAddress & 0x0FFFFFFF), NULL);
+        MappedMemoryWriteWord(dma->WriteAddress, tmp, NULL);
         dma->WriteAddress += dma->WriteAdd;
         dma->ReadAddress += 2;
         dma->TransferNumber -= 2;
@@ -1406,8 +1729,8 @@ void SucDmaExec(scudmainfo_struct * dma, int * time ) {
       MappedMemoryReadReserve(1, dma->ReadAddress, dma->TransferNumber, *time);
       while ( *time > 0) {
         *time -= 1;
-        u16 tmp = MappedMemoryReadWord((dma->ReadAddress & 0x0FFFFFFF), &cycle);
-        MappedMemoryWriteWord(dma->WriteAddress, tmp, &cycle);
+        u16 tmp = MappedMemoryReadWord((dma->ReadAddress & 0x0FFFFFFF), NULL);
+        MappedMemoryWriteWord(dma->WriteAddress, tmp, NULL);
         dma->WriteAddress += (dma->WriteAdd >> 1);
         dma->ReadAddress += 2;
         dma->TransferNumber -= 2;
@@ -1423,10 +1746,17 @@ void SucDmaExec(scudmainfo_struct * dma, int * time ) {
     else {
       u32 counter = 0;
       u32 start = dma->WriteAddress;
+
+      SucDmaBurstGeneric(dma, time); // no-op if the fast-path conditions aren't met
+      if (dma->TransferNumber <= 0) {
+        SH2WriteNotify(start, dma->WriteAddress - start);
+        return;
+      }
+
       while (*time > 0) {
         *time -= 1;
-        u32 val = MappedMemoryReadLong((dma->ReadAddress & 0x0FFFFFFF), &cycle);
-        MappedMemoryWriteLong(dma->WriteAddress, val , &cycle);
+        u32 val = MappedMemoryReadLong((dma->ReadAddress & 0x0FFFFFFF), NULL);
+        MappedMemoryWriteLong(dma->WriteAddress, val , NULL);
         dma->ReadAddress += 4;
         dma->WriteAddress += dma->WriteAdd;
         dma->TransferNumber -= 4;
@@ -1443,6 +1773,47 @@ void SucDmaExec(scudmainfo_struct * dma, int * time ) {
 
 
 }
+
+#ifdef SCU_DMA_PROFILE
+// Profiling wrapper: classifies which branch this call took (from the same
+// conditions SucDmaExecCore uses internally), runs the real function, then
+// records call count / total time / per-branch stats and periodically
+// dumps a summary via fprintf(stderr, ...). Only compiled in when
+// SCU_DMA_PROFILE is defined above -- zero overhead otherwise.
+void SucDmaExec(scudmainfo_struct * dma, int * time) {
+  int timeAtEntry = *time;
+  s32 xferAtEntry = dma->TransferNumber;
+  int isFill = (dma->ReadAdd == 0);
+  int destIsBBus = ((dma->WriteAddress & 0x1FFFFFFF) >= 0x5A00000
+                     && (dma->WriteAddress & 0x1FFFFFFF) < 0x5FF0000);
+  int srcIsBBus = ((dma->ReadAddress & 0x1FFFFFFF) >= 0x5A00000
+                    && (dma->ReadAddress & 0x1FFFFFFF) < 0x5FF0000);
+  ScuDmaBranchStat *bucket;
+  u64 t0, t1;
+
+  if (isFill)
+    bucket = destIsBBus ? &scuDmaFill16 : &scuDmaFill32;
+  else if (destIsBBus)
+    bucket = &scuDmaCopyBBusWrite;
+  else if (srcIsBBus)
+    bucket = &scuDmaCopyBBusRead;
+  else
+    bucket = &scuDmaCopyGeneric;
+
+  t0 = ScuDmaProfileNowNs();
+  SucDmaExecCore(dma, time);
+  t1 = ScuDmaProfileNowNs();
+
+  scuDmaProfileCalls++;
+  scuDmaProfileNs += (t1 - t0);
+
+  bucket->calls++;
+  bucket->sumTransferNumber += (u64)(xferAtEntry > 0 ? xferAtEntry : 0);
+  bucket->sumTimeConsumed += (u64)(timeAtEntry - *time);
+
+  ScuDmaProfileReport();
+}
+#endif // SCU_DMA_PROFILE
 
 
 void SucDmaCheck(scudmainfo_struct * dma, int time) {

@@ -152,7 +152,7 @@ static u64 start_time_ = 0;
 static int sw_flag = 0; 
 static int counter = 0;
 
-#define KEISOKU
+//#define KEISOKU
 #ifdef KEISOKU
 #define SW(n) for(tick_start();sw_flag;tick_end(n)) 
 #else

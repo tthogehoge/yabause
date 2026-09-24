@@ -141,6 +141,21 @@ extern "C" void FASTCALL Vdp1RamWriteLong(u32 addr, u32 val) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+// Used by SucDmaExec's burst-copy fast path (scu.c) to bypass the mapped
+// memory dispatcher for large linear DMA transfers into VDP1 RAM. The
+// buffer itself has no other side effects than vdp1_clock, so a batch of
+// words can be written directly and reported here in one call instead of
+// once per word.
+
+extern "C" u8 *Vdp1RamGetBasePtr(void) {
+   return Vdp1Ram;
+}
+
+extern "C" void Vdp1RamNotifyBurstWrite(void) {
+   vdp1_clock = 0;
+}
+
+//////////////////////////////////////////////////////////////////////////////
 
 extern "C" u8 FASTCALL Vdp1FrameBufferReadByte(u32 addr) {
    addr &= 0x3FFFF;
