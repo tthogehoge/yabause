@@ -147,6 +147,7 @@ void VIDOGLSetSettingValueMode(int type, int value);
 void VIDOGLSync();
 void VIDOGLGetNativeResolution(int *width, int *height, int*interlace);
 void VIDOGLVdp2DispOff(void);
+void VIDOGLVdp1WriteFrameBufferBurst(u32 type, u32 addr, const u16 *data, u32 count);
 
 VideoInterface_struct VIDOGL = {
 VIDCORE_OGL,
@@ -179,7 +180,8 @@ YglGetGlSize,
 VIDOGLSetSettingValueMode,
 VIDOGLSync,
 VIDOGLGetNativeResolution,
-VIDOGLVdp2DispOff
+VIDOGLVdp2DispOff,
+VIDOGLVdp1WriteFrameBufferBurst
 };
 
 float vdp1wratio = 1;

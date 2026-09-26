@@ -243,6 +243,44 @@ extern "C" void FASTCALL Vdp1FrameBufferWriteLong(u32 addr, u32 val) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+// Used by SucDmaExec's burst-copy fast path (scu.c). Vdp1FrameBufferWrite*
+// takes a VdpLockVram()/VdpUnLockVram() pair on every single word whenever a
+// video core has registered Vdp1WriteFrameBuffer (used by some
+// hardware-accelerated backends to mirror frame buffer writes in real
+// time). For a large linear DMA burst that lock was being taken and
+// released once per word; these let scu.c take it once for the whole burst
+// while still invoking the callback for every word, in order, exactly as
+// before -- only the lock granularity changes.
+
+extern "C" u8 *Vdp1FrameBufferGetBasePtr(void) {
+   return Vdp1FrameBuffer[Vdp1External.current_frame];
+}
+
+extern "C" int Vdp1FrameBufferHasCallback(void) {
+   return VIDCore->Vdp1WriteFrameBuffer != NULL;
+}
+
+extern "C" void Vdp1FrameBufferBurstLock(void) {
+   VdpLockVram();
+}
+
+extern "C" void Vdp1FrameBufferBurstUnlock(void) {
+   VdpUnLockVram();
+}
+
+extern "C" void Vdp1FrameBufferBurstCallbackWord(u32 addr, u16 val) {
+   VIDCore->Vdp1WriteFrameBuffer(1, addr, val);
+}
+
+extern "C" int Vdp1FrameBufferHasBurstCallback(void) {
+   return VIDCore->Vdp1WriteFrameBufferBurst != NULL;
+}
+
+extern "C" void Vdp1FrameBufferBurstCallbackRun(u32 addr, const u16 *words, u32 count) {
+   VIDCore->Vdp1WriteFrameBufferBurst(1, addr, words, count);
+}
+
+//////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////
 

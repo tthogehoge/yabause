@@ -158,7 +158,7 @@ static void ScuDspCaptureProgram(void) {
 //     even being taken (burst hit rate), and how many words it's moving
 //     when it is
 //
-#define SCU_DMA_PROFILE
+//#define SCU_DMA_PROFILE
 
 #ifdef SCU_DMA_PROFILE
 #include <time.h>
@@ -1401,6 +1401,13 @@ extern u8   *Vdp1RamGetBasePtr(void);
 extern void Vdp1RamNotifyBurstWrite(void);
 extern u8   *Vdp2RamGetBasePtr(void);
 extern void Vdp2RamNotifyBurstWrite(u32 addr, u32 len);
+extern u8   *Vdp1FrameBufferGetBasePtr(void);
+extern int  Vdp1FrameBufferHasCallback(void);
+extern void Vdp1FrameBufferBurstLock(void);
+extern void Vdp1FrameBufferBurstUnlock(void);
+extern void Vdp1FrameBufferBurstCallbackWord(u32 addr, u16 val);
+extern int  Vdp1FrameBufferHasBurstCallback(void);
+extern void Vdp1FrameBufferBurstCallbackRun(u32 addr, const u16 *words, u32 count);
 
 typedef enum {
   SCU_MEM_NONE = 0,
@@ -1408,6 +1415,9 @@ typedef enum {
   SCU_MEM_HIGHWRAM,  // T2 layout (WSWAP32), 1MB
   SCU_MEM_VDP1RAM,   // T1 layout (BSWAP32), 512KB
   SCU_MEM_VDP2RAM,   // T1 layout (BSWAP32), 512KB
+  SCU_MEM_VDP1FB,    // T1 layout (BSWAP32), 256KB. Needs VdpLockVram() +
+                      // an optional per-word renderer callback -- see
+                      // SucDmaBurstToBBus's SCU_MEM_VDP1FB branch.
 } ScuMemKind;
 
 static INLINE ScuMemKind ScuClassifyAddr(u32 addr, u8 **out_base, u32 *out_mask) {
@@ -1415,13 +1425,14 @@ static INLINE ScuMemKind ScuClassifyAddr(u32 addr, u8 **out_base, u32 *out_mask)
   if (a >= 0x00200000 && a <= 0x002FFFFF) { *out_base = LowWram;  *out_mask = 0xFFFFF;  return SCU_MEM_LOWWRAM; }
   if (a >= 0x06000000 && a <= 0x060FFFFF) { *out_base = HighWram; *out_mask = 0xFFFFF;  return SCU_MEM_HIGHWRAM; }
   if (a >= 0x05C00000 && a <= 0x05C7FFFF) { *out_base = Vdp1RamGetBasePtr(); *out_mask = 0x7FFFF; return SCU_MEM_VDP1RAM; }
+  if (a >= 0x05C80000 && a <= 0x05CFFFFF) { *out_base = Vdp1FrameBufferGetBasePtr(); *out_mask = 0x3FFFF; return SCU_MEM_VDP1FB; }
   if (a >= 0x05E00000 && a <= 0x05EFFFFF) { *out_base = Vdp2RamGetBasePtr(); *out_mask = 0x7FFFF; return SCU_MEM_VDP2RAM; }
   *out_base = NULL; *out_mask = 0;
   return SCU_MEM_NONE;
 }
 
 static INLINE int ScuMemIsT1(ScuMemKind k) {
-  return k == SCU_MEM_VDP1RAM || k == SCU_MEM_VDP2RAM;
+  return k == SCU_MEM_VDP1RAM || k == SCU_MEM_VDP2RAM || k == SCU_MEM_VDP1FB;
 }
 
 static void ScuDmaNotifyBurstWrite(ScuMemKind wkind, u32 wOff, u32 lenBytes) {
@@ -1460,7 +1471,7 @@ static int SucDmaBurstToBBus(scudmainfo_struct * dma, int * time) {
 #endif
     return 0;
   }
-  if (wkind == SCU_MEM_NONE || (wkind != SCU_MEM_VDP1RAM && wkind != SCU_MEM_VDP2RAM)) {
+  if (wkind == SCU_MEM_NONE) {
 #ifdef SCU_DMA_PROFILE
     scuDmaBurstMissWriteRegion++;
 #endif
@@ -1490,7 +1501,48 @@ static int SucDmaBurstToBBus(scudmainfo_struct * dma, int * time) {
     return 0;
   }
 
-  if (ScuMemIsT1(rkind) == ScuMemIsT1(wkind)) {
+  if (wkind == SCU_MEM_VDP1FB) {
+    // The frame buffer's per-word callback used to mean one function call
+    // (plus lock/unlock) per word. When the video core exposes the newer
+    // burst callback, gather words into a bounded stack buffer and hand
+    // them over in chunks instead -- collapsing up to
+    // SCU_DMA_VDP1FB_CHUNK calls into one. Vdp1FrameBuffer itself is still
+    // written here (as before); the burst callback only does the
+    // texture/color-conversion side of things.
+    int hasBurstCb = Vdp1FrameBufferHasBurstCallback();
+    int hasCb = hasBurstCb || Vdp1FrameBufferHasCallback();
+    s32 i;
+
+    if (hasCb) Vdp1FrameBufferBurstLock();
+
+    if (hasBurstCb) {
+#define SCU_DMA_VDP1FB_CHUNK 512
+      u16 valBuf[SCU_DMA_VDP1FB_CHUNK];
+      s32 done = 0;
+      while (done < units) {
+        s32 chunk = units - done;
+        if (chunk > SCU_DMA_VDP1FB_CHUNK) chunk = SCU_DMA_VDP1FB_CHUNK;
+        for (i = 0; i < chunk; i++) {
+          u16 val = ScuMemIsT1(rkind) ? T1ReadWord(rbase, rOff + (u32)(done + i) * 2)
+                                       : T2ReadWord(rbase, rOff + (u32)(done + i) * 2);
+          valBuf[i] = val;
+          T1WriteWord(wbase, wOff + (u32)(done + i) * 2, val);
+        }
+        Vdp1FrameBufferBurstCallbackRun(wOff + (u32)done * 2, valBuf, (u32)chunk);
+        done += chunk;
+      }
+#undef SCU_DMA_VDP1FB_CHUNK
+    } else {
+      for (i = 0; i < units; i++) {
+        u16 val = ScuMemIsT1(rkind) ? T1ReadWord(rbase, rOff + (u32)i * 2)
+                                     : T2ReadWord(rbase, rOff + (u32)i * 2);
+        if (hasCb) Vdp1FrameBufferBurstCallbackWord(wOff + (u32)i * 2, val);
+        T1WriteWord(wbase, wOff + (u32)i * 2, val);
+      }
+    }
+
+    if (hasCb) Vdp1FrameBufferBurstUnlock();
+  } else if (ScuMemIsT1(rkind) == ScuMemIsT1(wkind)) {
     // Same byte layout (VDP1RAM <-> VDP2RAM): a raw copy is valid.
     memmove(wbase + wOff, rbase + rOff, (size_t)units * 2);
   } else {
