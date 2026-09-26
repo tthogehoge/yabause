@@ -946,6 +946,100 @@ void VIDOGLVdp1WriteFrameBuffer(u32 type, u32 addr, u32 val ) {
   _Ygl->cpu_framebuffer_write[_Ygl->drawframe]++;
 }
 
+//////////////////////////////////////////////////////////////////////////////
+// Burst counterpart of VIDOGLVdp1WriteFrameBuffer, for SucDmaExec's DMA
+// burst fast path (scu.c). Only handles type==1 (word) writes -- that's
+// the only type the DMA burst path ever uses; anything else falls back to
+// calling VIDOGLVdp1WriteFrameBuffer per element.
+//
+// x/y are only decoded from `addr` once, up front, then advanced by a
+// simple increment per element (the DMA burst writes contiguous words, so
+// x/y move linearly through the frame buffer) instead of re-deriving them
+// with a shift+mask on every element like the per-word path does.
+//
+// This intentionally does NOT write into Vdp1FrameBuffer itself -- the
+// caller (scu.c) already does that as part of the same burst, exactly like
+// it does for the non-callback fast path. Duplicating it here would just
+// be the same redundant double-write the per-word path already has
+// (VIDOGLVdp1WriteFrameBuffer writes it, then Vdp1FrameBufferWriteWord
+// writes it again after the callback returns) -- no need to carry that
+// forward into the new path.
+void VIDOGLVdp1WriteFrameBufferBurst(u32 type, u32 addr, const u16 *data, u32 count) {
+  u32 i;
+
+  if (type != 1) {
+    for (i = 0; i < count; i++)
+      VIDOGLVdp1WriteFrameBuffer(type, addr + i, data[i]);
+    return;
+  }
+
+  int tvmode = (Vdp1Regs->TVMR & 0x7);
+  switch (tvmode) {
+    case 0: // 16bit 512x256
+    case 2:
+    case 4:
+    {
+      u32 y = (addr >> 10) & 0xFF;
+      u32 x = (addr & 0x3FF) >> 1;
+      for (i = 0; i < count; i++) {
+        u16 val = data[i];
+        if (x < _Ygl->rwidth && y < _Ygl->rheight) {
+          u32 texaddr = _Ygl->rwidth * (_Ygl->rheight - y - 1) + x;
+          if (val & 0x8000) {
+            _Ygl->CpuWriteFrameBuffer[texaddr] = VDP1COLOR(0, 0, 0, 0, VDP1COLOR16TO24(val));
+          } else {
+            spritepixelinfo_struct spi = { 0 };
+            Vdp1GetSpritePixelInfo(Vdp2Regs->SPCTL & 0x0F, (u16 *)&val, &spi);
+            _Ygl->CpuWriteFrameBuffer[texaddr] = VDP1COLOR(1, spi.colorcalc, spi.priority, 0, val);
+          }
+        }
+        x++;
+        if (x >= 512) { x -= 512; y++; }
+      }
+      break;
+    }
+    case 1: // 8bit 1024x256 -- word-addressed, same x/y decode as case 0
+    {
+      u32 y = (addr >> 10) & 0xFF;
+      u32 x = (addr & 0x3FF) >> 1;
+      for (i = 0; i < count; i++) {
+        u16 val = data[i];
+        if (x < _Ygl->rwidth && y < _Ygl->rheight) {
+          u32 texaddr = _Ygl->rwidth * (_Ygl->rheight - y - 1) + x;
+          _Ygl->CpuWriteFrameBuffer[texaddr] = VDP1COLOR(1, 0, 0, 0, (val >> 8) & 0xFF);
+          _Ygl->CpuWriteFrameBuffer[texaddr + 1] = VDP1COLOR(1, 0, 0, 0, val & 0xFF);
+        }
+        x++;
+        if (x >= 512) { x -= 512; y++; }
+      }
+      break;
+    }
+    case 3: // 8bit 512x512 -- x is a raw byte offset (not halved), advances by 2/word
+    {
+      u32 y = (addr >> 9) & 0x1FF;
+      u32 x = addr & 0x1FF;
+      for (i = 0; i < count; i++) {
+        u16 val = data[i];
+        if (x <= _Ygl->rwidth && y < _Ygl->rheight) {
+          u32 texaddr = _Ygl->rwidth * (_Ygl->rheight - y - 1) + x;
+          _Ygl->CpuWriteFrameBuffer[texaddr] = VDP1COLOR(1, 0, 0, 0, (val >> 8) & 0xFF);
+          _Ygl->CpuWriteFrameBuffer[texaddr + 1] = VDP1COLOR(1, 0, 0, 0, val & 0xFF);
+        }
+        x += 2;
+        if (x >= 512) { x -= 512; y++; }
+      }
+      break;
+    }
+    default:
+      break;
+  }
+
+  if (_Ygl->cpu_framebuffer_write[_Ygl->drawframe] == 0) {
+    FRAMELOG("VIDOGLVdp1WriteFrameBufferBurst: CPU write framebuffer %d:1\n", _Ygl->drawframe);
+  }
+  _Ygl->cpu_framebuffer_write[_Ygl->drawframe] += count;
+}
+
 void YglDrawCpuFramebufferWrite(int target) {
   if (_Ygl->cpu_framebuffer_write[target] == 0) return;
 

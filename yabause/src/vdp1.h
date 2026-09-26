@@ -116,6 +116,16 @@ typedef struct
    void(*Sync)();
    void (*GetNativeResolution)(int *width, int *height, int * interlace);
    void(*Vdp2DispOff)(void);
+   // Optional: burst counterpart of Vdp1WriteFrameBuffer for SucDmaExec's
+   // DMA burst fast path (scu.c). Takes a contiguous run of `count` 16-bit
+   // words starting at `addr` (type is always 1/word for this entry
+   // point) in one call instead of `count` separate Vdp1WriteFrameBuffer
+   // calls. Placed last so existing positional struct initializers don't
+   // need to change -- any trailing member they don't list is
+   // zero-initialized, i.e. NULL, and the burst path falls back to
+   // calling Vdp1WriteFrameBuffer per word whenever it's NULL, exactly as
+   // before.
+   void(*Vdp1WriteFrameBufferBurst)(u32 type, u32 addr, const u16 *data, u32 count);
 } VideoInterface_struct;
 
 extern VideoInterface_struct *VIDCore;
