@@ -1660,7 +1660,7 @@ void Vdp1FrameBufferReadReserve(u32 type, u32 addr, u32 trans)
   if(needcopy){
     YabAddEventQueue(evqueue,VDPEV_COPY); 
     YabThreadYield();
-    while (reserve_comp==0){ YabThreadYield(); }
+    //while (reserve_comp==0){ YabThreadYield(); }
   }
 }
 
