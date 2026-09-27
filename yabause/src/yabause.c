@@ -187,7 +187,8 @@ static void tick_show()
 } 
 
 //#define SCU_THREAD_1 1
-#define SCU_THREAD_2 1
+//#define SCU_THREAD_2 1
+#define SCU_THREAD_3 1
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -260,7 +261,6 @@ static void * ScuThreadFunc(void *arg) {
       int cnt = YabWaitEventQueue(q_scu_in);
       if (cnt < 0) break;  // 終了シグナル
       ScuExec((u32)cnt);
-      M68KSync();
       YabAddEventQueue(q_scu_out, 0);
    }
    return NULL;
@@ -924,7 +924,26 @@ int YabauseEmulate(void) {
          }
       }
 
-#if SCU_THREAD_2
+#if SCU_THREAD_3
+      scucount+= (sh2cycles >> 1);
+      if(scucount>40000 || oneframeexec){
+	      if (scu_dispatched) {
+		 SW(SW_SCU){
+		 YabWaitEventQueue(q_scu_out);
+		 }
+		 scu_dispatched = 0;
+	      }
+	      // SCU/M68K処理を別スレッドへ非同期オフロード
+	      SW(SW_SCU){
+	      PROFILE_START("SCU");
+	      YabAddEventQueue(q_scu_in, scucount);
+	      scucount = 0;
+	      scu_dispatched = 1;
+	      PROFILE_STOP("SCU");
+	      }
+      }
+      M68KSync();
+#elif SCU_THREAD_2
       if(oneframeexec) {
          if (scu_dispatched) {
             SW(SW_SCU){
