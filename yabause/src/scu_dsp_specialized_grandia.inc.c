@@ -11,7 +11,7 @@
 // The generated macro jumps directly to the common instruction epilogue
 // for specialized addresses; other addresses fall back to the interpreter.
 
-#define SCU_DSP_SPECIALIZED_STEP() do { \
+#define SCU_DSP_SPECIALIZED_GRANDIA_STEP() do { \
    switch (ScuDsp->PC) { \
    case 0x00: { \
       writed1busdest_specialized(0xC, (u32)(signed char)0xE); \
