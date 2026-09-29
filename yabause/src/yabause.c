@@ -186,6 +186,9 @@ static void tick_show()
         printf("Total: %f\n", sum);
 } 
 
+//#define SCU_THREAD_1 1
+#define SCU_THREAD_2 1
+
 //////////////////////////////////////////////////////////////////////////////
 
 yabsys_struct yabsys;
@@ -249,11 +252,27 @@ extern int tweak_backup_file_size;
 YabEventQueue * q_scsp_frame_start;
 YabEventQueue * q_scsp_finish;
 
+static YabEventQueue * q_scu_in  = NULL;  // scucount をメイン→SCUスレッドへ
+static YabEventQueue * q_scu_out = NULL;  // SCUスレッド完了通知
+
+static void * ScuThreadFunc(void *arg) {
+   for (;;) {
+      int cnt = YabWaitEventQueue(q_scu_in);
+      if (cnt < 0) break;  // 終了シグナル
+      ScuExec((u32)cnt);
+      M68KSync();
+      YabAddEventQueue(q_scu_out, 0);
+   }
+   return NULL;
+}
 
 int YabauseInit(yabauseinit_struct *init)
 {
   q_scsp_frame_start = YabThreadCreateQueue(1);
   q_scsp_finish = YabThreadCreateQueue(1);
+  q_scu_in  = YabThreadCreateQueue(1);
+  q_scu_out = YabThreadCreateQueue(1);
+  YabThreadStart(YAB_THREAD_SCU, ScuThreadFunc, NULL);
   setM68kCounter(0);
 
 #if !(defined(__LIBRETRO__))
@@ -572,6 +591,11 @@ void YabauseDeInit(void) {
  
    CartDeInit();
    Cs2DeInit();
+   // SCUスレッドに終了シグナルを送ってから待つ
+   if (q_scu_in) {
+      YabAddEventQueue(q_scu_in, -1);
+      YabThreadWait(YAB_THREAD_SCU);
+   }
    ScuDeInit();
    ScspDeInit();
    SmpcDeInit();
@@ -777,6 +801,9 @@ int YabauseEmulate(void) {
    }
    #endif
 
+   // 前フレームのSCUスレッド処理が完了するまで待つ
+   // (scu_dispatched は前フレームでキューへ送信済みかを示す)
+   static int scu_dispatched = 0;
    MSH2->cycles = 0;
    MSH2->depth = 0;
    MSH2->pre_cycle = 0;
@@ -787,6 +814,20 @@ int YabauseEmulate(void) {
    SH2OnFrame(SSH2);
    u64 cpu_emutime = 0;
    int scucount = 0;
+
+#if SCU_THREAD_2
+   // SCU/M68K処理を別スレッドへ非同期オフロード
+   scucount = 238875;
+   SW(SW_SCU){
+   PROFILE_START("SCU");
+   YabAddEventQueue(q_scu_in, scucount);
+   scucount = 0;
+   scu_dispatched = 1;
+   PROFILE_STOP("SCU");
+   }
+   scucount = 0;
+#endif
+
    while (!oneframeexec)
    {
       PROFILE_START("Total Emulation");
@@ -883,21 +924,35 @@ int YabauseEmulate(void) {
          }
       }
 
-#if 1
-      scucount+= (sh2cycles >> 1);
+#if SCU_THREAD_2
       if(oneframeexec) {
-         SW(SW_SCU){
-         PROFILE_START("SCU");
-         ScuExec(scucount);
-         PROFILE_STOP("SCU");
-         }
-         SW(SW_68K){
-         PROFILE_START("68K");
-         M68KSync();  // Wait for the previous iteration to finish
-         PROFILE_STOP("68K");
+         if (scu_dispatched) {
+            SW(SW_SCU){
+            YabWaitEventQueue(q_scu_out);
+            }
+            scu_dispatched = 0;
          }
       }
-#else
+#elif SCU_THREAD_1
+      scucount+= (sh2cycles >> 1);
+      if(oneframeexec) {
+         if (scu_dispatched) {
+            SW(SW_SCU){
+            YabWaitEventQueue(q_scu_out);
+            }
+            scu_dispatched = 0;
+         }
+
+         // SCU/M68K処理を別スレッドへ非同期オフロード
+         SW(SW_SCU){
+         PROFILE_START("SCU");
+         YabAddEventQueue(q_scu_in, scucount);
+         scucount = 0;
+         scu_dispatched = 1;
+         PROFILE_STOP("SCU");
+         }
+      }
+#elif 0
       SW(SW_SCU){
       PROFILE_START("SCU");
       ScuExec(sh2cycles >> 1);
