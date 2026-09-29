@@ -143,19 +143,20 @@ static void ScuDspCaptureProgram(void) {
 #endif // SCU_DSP_CAPTURE
 
 // ---------------------------------------------------------------------------
-// Grandia-specialized DSP fast path.
+// Capture-specialized DSP fast paths.
 //
 // The generated functions cover the fixed OP/MVI instructions in the captured
 // Grandia program. Other instructions continue through the interpreter.
 //
-#define SCU_DSP_SPECIALIZE_GRANDIA
+//#define SCU_DSP_SPECIALIZE_GRANDIA
 #ifdef SCU_DSP_SPECIALIZE_GRANDIA
 // FNV-1a 64-bit hash of the known-good 256-word Grandia DSP program,
 // computed offline from a SCU_DSP_CAPTURE dump (scu_dsp_capture_06.bin).
 #define GRANDIA_DSP_PROGRAM_HASH 0x421c890e5b64a0fbULL
+#define CAPTURE_03_DSP_PROGRAM_HASH 0xab8994ff3cebe256ULL
 
 static int scuDspSpecializeWasRunning = 0;
-static int scuDspSpecializeActive = 0;
+static int scuDspSpecializeActive = 0; /* 1 = capture 06, 2 = capture 03 */
 
 static INLINE u64 ScuDspProgramHash(void) {
    u64 h = 0xcbf29ce484222325ULL;
@@ -853,6 +854,7 @@ static void writeloadimdest_specialized(u8 num, u32 val)
 
 #ifdef SCU_DSP_SPECIALIZE_GRANDIA
 #include "scu_dsp_specialized_grandia.inc.c"
+#include "scu_dsp_specialized_03.inc.c"
 #endif
 
 void dsp_dma01(scudspregs_struct *sc, u32 inst)
@@ -1593,11 +1595,13 @@ void ScuExec(u32 timing) {
 
 #ifdef SCU_DSP_SPECIALIZE_GRANDIA
    if (ScuDsp->ProgControlPort.part.EX && !scuDspSpecializeWasRunning) {
-      if (ScuDspProgramHash() == GRANDIA_DSP_PROGRAM_HASH) {
-        scuDspSpecializeActive = 1;
-      } else {
-        scuDspSpecializeActive = 0;
-      }
+      u64 program_hash = ScuDspProgramHash();
+      if (program_hash == GRANDIA_DSP_PROGRAM_HASH)
+         scuDspSpecializeActive = 1;
+      else if (program_hash == CAPTURE_03_DSP_PROGRAM_HASH)
+         scuDspSpecializeActive = 2;
+      else
+         scuDspSpecializeActive = 0;
    }
    if (!ScuDsp->ProgControlPort.part.EX)
       scuDspSpecializeActive = 0;
@@ -1624,7 +1628,7 @@ void ScuExec(u32 timing) {
 #endif
      s32 dsp_counter = (s32)timing;
 #ifdef SCU_DSP_SPECIALIZE_GRANDIA
-     const int use_grandia_specialization = scuDspSpecializeActive;
+     const int use_dsp_specialization = scuDspSpecializeActive;
 #endif
       while (dsp_counter > 0) {
          u32 instruction;
@@ -1658,10 +1662,15 @@ void ScuExec(u32 timing) {
 #endif
 
 #ifdef SCU_DSP_SPECIALIZE_GRANDIA
-         if (use_grandia_specialization &&
+         if (use_dsp_specialization == 1 &&
              ScuDsp->ProgControlPort.part.T0 == 0 &&
              ScuDsp->dsp_dma_wait == 0) {
-            SCU_DSP_SPECIALIZED_STEP();
+            SCU_DSP_SPECIALIZED_GRANDIA_STEP();
+         }
+         if (use_dsp_specialization == 2 &&
+            ScuDsp->ProgControlPort.part.T0 == 0 &&
+            ScuDsp->dsp_dma_wait == 0) {
+           SCU_DSP_SPECIALIZED_03_STEP();
          }
 #endif
 
