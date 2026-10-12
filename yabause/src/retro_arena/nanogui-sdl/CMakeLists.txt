@@ -117,7 +117,15 @@ endif()
 include_directories(ext ext/eigen include ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 
 # Run simple C converter to put font files into the data segment
-add_executable(bin2c resources/bin2c.c)
+set(BIN2C_HOST "${CMAKE_CURRENT_BINARY_DIR}/bin2c-host")
+add_custom_command(
+  OUTPUT "${BIN2C_HOST}"
+  COMMAND "${YAB_HOST_C_COMPILER}" "${CMAKE_CURRENT_SOURCE_DIR}/resources/bin2c.c"
+          -o "${BIN2C_HOST}"
+  DEPENDS resources/bin2c.c
+  COMMENT "Building host bin2c"
+  VERBATIM)
+
 set(bin2c_cmdline nanogui_resources.cpp nanogui_resources.h)
 file(GLOB resources "${CMAKE_CURRENT_SOURCE_DIR}/resources/*.ttf")
 foreach(file ${resources})
@@ -127,8 +135,8 @@ endforeach()
 # Run bin2c on resource files
 add_custom_command(
   OUTPUT nanogui_resources.cpp nanogui_resources.h
-  COMMAND /home/takashi/work/yabause/yabause/src/retro_arena/nanogui-sdl/resources/bin2c ARGS ${bin2c_cmdline}
-  DEPENDS bin2c ${resources}
+  COMMAND "${BIN2C_HOST}" ARGS ${bin2c_cmdline}
+  DEPENDS "${BIN2C_HOST}" ${resources}
   COMMENT "Running bin2c"
   PRE_BUILD VERBATIM)
 

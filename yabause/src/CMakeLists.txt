@@ -729,6 +729,7 @@ if (YAB_WANT_MUSASHI)
         DOWNLOAD_COMMAND ""
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/musashi
         CMAKE_GENERATOR "${CMAKE_GENERATOR}"
+        CMAKE_ARGS -DYAB_HOST_C_COMPILER:FILEPATH=${YAB_HOST_C_COMPILER}
         INSTALL_COMMAND ""
         BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/musashi
     )
@@ -1111,6 +1112,5 @@ option(YAB_TESTS "Build test programs for cores" OFF)
 if (YAB_TESTS)
 	add_subdirectory("tools")
 endif()
-
 
 

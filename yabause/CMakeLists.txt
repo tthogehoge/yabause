@@ -11,6 +11,27 @@ LIST(APPEND CMAKE_MODULE_PATH
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Small code generators are executed while configuring/building the target.
+# When cross-compiling, they must be built for the machine running CMake.
+set(YAB_HOST_C_COMPILER "" CACHE FILEPATH
+    "C compiler used to build host-side code generators")
+if (NOT YAB_HOST_C_COMPILER)
+    if (CMAKE_CROSSCOMPILING)
+        # Search through a temporary variable because YAB_HOST_C_COMPILER is
+        # already a cache entry and find_program() will not populate it when
+        # that cache entry is empty.
+        find_program(_YAB_HOST_C_COMPILER NAMES cc gcc clang)
+        if (NOT _YAB_HOST_C_COMPILER)
+            message(FATAL_ERROR
+                "A host C compiler is required to build bin2c and m68kmake. "
+                "Set YAB_HOST_C_COMPILER to its path.")
+        endif()
+        set(YAB_HOST_C_COMPILER "${_YAB_HOST_C_COMPILER}")
+    else()
+        set(YAB_HOST_C_COMPILER "${CMAKE_C_COMPILER}")
+    endif()
+endif()
+
 set(YAB_PACKAGE yabause)
 set(YAB_VERSION_MAJOR 1)
 set(YAB_VERSION_MINOR 11)
