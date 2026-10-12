@@ -19,7 +19,17 @@ set(YAB_VERSION "${YAB_VERSION_MAJOR}.${YAB_VERSION_MINOR}.${YAB_VERSION_PATCH}"
 
 include(GetGitRevisionDescription)
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
-string(SUBSTRING ${GIT_SHA1} 0 6 GIT_SHA1_MINI )
+if (GIT_SHA1)
+    string(LENGTH "${GIT_SHA1}" GIT_SHA1_LENGTH)
+    if (GIT_SHA1_LENGTH GREATER 6)
+        string(SUBSTRING "${GIT_SHA1}" 0 6 GIT_SHA1_MINI)
+    else()
+        set(GIT_SHA1_MINI "${GIT_SHA1}")
+    endif()
+else()
+    set(GIT_SHA1 "unknown")
+    set(GIT_SHA1_MINI "unknown")
+endif()
 
 set(CPACK_SOURCE_GENERATOR TGZ)
 set(CPACK_PACKAGE_VERSION_MAJOR 2${YAB_VERSION_MAJOR})
