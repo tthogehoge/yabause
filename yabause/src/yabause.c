@@ -188,7 +188,7 @@ static void tick_show()
 
 //#define SCU_THREAD_1 1
 //#define SCU_THREAD_2 1
-#define SCU_THREAD_3 1
+//#define SCU_THREAD_3 1
 
 //////////////////////////////////////////////////////////////////////////////
 
