@@ -971,7 +971,7 @@ int YabauseEmulate(void) {
          PROFILE_STOP("SCU");
          }
       }
-#elif 0
+#elif 1
       SW(SW_SCU){
       PROFILE_START("SCU");
       ScuExec(sh2cycles >> 1);
