@@ -7763,7 +7763,7 @@ static void Vdp2DrawNBG3(void)
     }
 
 
-  Vdp2GeneratePerLineColorCalcurationNBG3(&info, NBG3);
+  Vdp2GeneratePerLineColorCalcuration(&info, NBG3);
   info.linescreen = 0;
   if (fixVdp2Regs->LNCLEN & 0x8)
     info.linescreen = 1;
@@ -7848,11 +7848,11 @@ static void Vdp2DrawNBG3(void)
     infotmp.cellh = vdp2height;
     infotmp.flipfunction = 0;
     YglQuad(&infotmp, &texture, &tmpc);
-    Vdp2DrawMapPerLineNbg3(&info, &texture,3,xoffset);
+    Vdp2DrawMapPerLineNbg23(&info, &texture,3,xoffset);
   } else {
     info.x = (fixVdp2Regs->SCXN3 & 0x7FF) + xoffset;
     info.y = fixVdp2Regs->SCYN3 & 0x7FF;
-    Vdp2DrawMapTestNBG3(&info, &texture);
+    Vdp2DrawMapTest(&info, &texture);
   }
 
 }
